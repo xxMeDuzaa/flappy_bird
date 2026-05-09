@@ -2,14 +2,15 @@
 import pygame
 import sys
 from server import Bird, Pipe, get_difficulty_config, FaceController, ScoreManager
-from client import GameRenderer, CameraView
+from client import GameRenderer
 
 def main():
     # Inicializar componentes
     pygame.init()
     
-    # Backend (server)
-    face_controller = FaceController()
+    # Backend (server) - SIN modo debug
+    print("Inicializando cámara (modo oculto)...")
+    face_controller = FaceController(show_debug=False)
     if not face_controller.initialized:
         print("Error: No se pudo inicializar la cámara")
         return
@@ -17,22 +18,26 @@ def main():
     score_manager = ScoreManager()
     
     # Frontend (client)
-    renderer = GameRenderer()
-    camera_view = CameraView()
+    renderer = GameRenderer(width=1024, height=600)
     
-    # Variables del juego
-    sensitivity = 0.7
+    # Variables del juego - sensibilidad fija
+    sensitivity = 0.85  # Valor fijo, no modificable
     bird = Bird(sensitivity)
     pipes = []
     game_over = False
     clock = renderer.get_clock()
     
-    print("\n=== JUEGO INICIADO ===")
-    print("✓ Colócate frente a la cámara")
-    print("✓ Mueve tu CARA arriba/abajo para controlar el pájaro")
-    print("✓ Presiona + / - para ajustar la SENSIBILIDAD del control")
-    print("✓ La dificultad aumenta automáticamente con tu puntaje")
-    print("=====================\n")
+    print("\n" + "="*60)
+    print("   🐦 FLAPPY BIRD - CONTROL FACIAL")
+    print("="*60)
+    print(f"📺 RESOLUCIÓN: 1024x600")
+    print("🎮 CONTROL: Mueve tu NARIZ arriba/abajo")
+    print("📷 CÁMARA: Modo oculto (sin ventana)")
+    print("\n🎛️ CONTROLES:")
+    print("   • R   : Reiniciar juego")
+    print("   • ESC : Salir")
+    print("\n💡 Para probar la cámara ejecuta: python camera_debug.py")
+    print("="*60 + "\n")
     
     while True:
         # Obtener dificultad actual
@@ -42,40 +47,27 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 face_controller.release()
-                camera_view.close()
                 pygame.quit()
                 sys.exit()
                 
             if event.type == pygame.KEYDOWN:
                 if event.key == pygame.K_ESCAPE:
                     face_controller.release()
-                    camera_view.close()
                     pygame.quit()
                     sys.exit()
                     
                 if event.key == pygame.K_r and game_over:
-                    # Reiniciar juego
                     bird = Bird(sensitivity)
                     pipes = []
                     score_manager.reset_score()
                     game_over = False
                     print("✓ Juego reiniciado!")
-                    
-                if event.key == pygame.K_EQUALS or event.key == pygame.K_PLUS:
-                    sensitivity = min(1.0, sensitivity + 0.05)
-                    bird.sensitivity = sensitivity
-                    print(f"Sensibilidad aumentada a: {sensitivity:.2f}")
-                    
-                if event.key == pygame.K_MINUS:
-                    sensitivity = max(0.1, sensitivity - 0.05)
-                    bird.sensitivity = sensitivity
-                    print(f"Sensibilidad reducida a: {sensitivity:.2f}")
         
         if not game_over:
             # Actualizar detección facial
             face_controller.update()
             
-            # Obtener posición de la nariz
+            # Control principal: posición de la nariz
             nose_y = face_controller.get_nose_position()
             if nose_y is not None:
                 bird.update_with_nose(nose_y)
@@ -91,19 +83,19 @@ def main():
                     pipes.remove(pipe)
                     is_new_record = score_manager.add_score()
                     if is_new_record:
-                        print(f"¡Nuevo récord: {score_manager.get_high_score()}!")
+                        print(f"🎉 ¡NUEVO RÉCORD! {score_manager.get_high_score()} puntos 🎉")
             
             # Verificar colisiones
             bird_rect = bird.get_rect()
             
             if bird.y - bird.radius <= 0 or bird.y + bird.radius >= renderer.height:
                 game_over = True
-                print(f"¡Game Over! Puntaje final: {score_manager.get_current_score()}")
+                print(f"💀 Game Over! Puntaje final: {score_manager.get_current_score()}")
                 
             for pipe in pipes:
                 if pipe.collide(bird_rect):
                     game_over = True
-                    print(f"¡Game Over! Puntaje final: {score_manager.get_current_score()}")
+                    print(f"💀 Game Over! Puntaje final: {score_manager.get_current_score()}")
         
         # Renderizar juego
         renderer.clear()
@@ -114,44 +106,24 @@ def main():
             top_rect, bottom_rect = pipe.get_rects()
             renderer.draw_pipe(top_rect, bottom_rect)
         
+        # Dibujar solo score y récord
         renderer.draw_score(
             score_manager.get_current_score(),
-            score_manager.get_high_score(),
-            difficulty
+            score_manager.get_high_score()
         )
         
         renderer.draw_instructions()
-        renderer.draw_sensitivity_indicator(sensitivity)
         
-        if not game_over and face_controller.is_face_detected():
-            nose_y = face_controller.get_nose_position()
-            if nose_y:
-                renderer.draw_nose_indicator(nose_y)
-        
+        # Mostrar advertencia si no detecta rostro
         if not game_over and not face_controller.is_face_detected():
-            renderer.draw_warning("No se detecta tu rostro - Acercate a la camara")
+            renderer.draw_warning("⚠️ No se detecta tu rostro - Acercate a la camara")
         
-        if not game_over and score_manager.get_current_score() >= 5:
-            renderer.draw_difficulty_info(
-                f"Dificultad: Velocidad {abs(difficulty['velocity']):.1f} | Gap {difficulty['gap']}"
-            )
+        # Cartel de dificultad ELIMINADO - ya no se muestra cuando aumenta la velocidad
         
         if game_over:
             renderer.draw_game_over(
                 score_manager.get_current_score(),
                 score_manager.get_high_score()
-            )
-        
-        # Mostrar vista de cámara
-        if face_controller.get_frame() is not None:
-            camera_view.show(
-                face_controller.get_frame(),
-                score_manager.get_current_score(),
-                difficulty['velocity'],
-                difficulty['gap'],
-                sensitivity,
-                face_controller.is_face_detected(),
-                face_controller.get_face_rect()
             )
         
         renderer.update()

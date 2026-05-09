@@ -1,17 +1,17 @@
 # server/game_logic.py
 import random
 
-# Constantes del juego
-WIDTH, HEIGHT = 400, 600
-PIPE_WIDTH = 70
+# Configuración de pantalla HORIZONTAL (modo landscape)
+WIDTH, HEIGHT = 1024, 600  # Relación 16:9 como monitor
+PIPE_WIDTH = 80  # Tubos más anchos para pantalla grande
 
-# Configuración de dificultad
+# Configuración de dificultad ajustada para pantalla ancha
 DIFFICULTY_CONFIG = {
-    0: {'gap': 200, 'velocity': -5, 'spawn_distance': 280},   # Más rápido desde el inicio
-    5: {'gap': 190, 'velocity': -5.5, 'spawn_distance': 270},
-    10: {'gap': 180, 'velocity': -6, 'spawn_distance': 260},
-    15: {'gap': 170, 'velocity': -6.5, 'spawn_distance': 250},
-    20: {'gap': 160, 'velocity': -7, 'spawn_distance': 240},
+    0: {'gap': 220, 'velocity': -10, 'spawn_distance': 400},     # Más espacio entre tubos
+    5: {'gap': 210, 'velocity': -11, 'spawn_distance': 350},
+    10: {'gap': 200, 'velocity': -12, 'spawn_distance': 300},
+    15: {'gap': 190, 'velocity': -13, 'spawn_distance': 290},
+    20: {'gap': 180, 'velocity': -14, 'spawn_distance': 280},
 }
 
 def get_difficulty_config(score):
@@ -23,10 +23,10 @@ def get_difficulty_config(score):
     return DIFFICULTY_CONFIG[level]
 
 class Bird:
-    def __init__(self, sensitivity=1.0):
-        self.x = 100
+    def __init__(self, sensitivity=0.7):
+        self.x = WIDTH // 4  # Pájaro a 1/4 de la pantalla (más espacio para reaccionar)
         self.y = HEIGHT // 2
-        self.radius = 15
+        self.radius = 18  # Pájaro más grande para pantalla más ancha
         self.sensitivity = sensitivity
         
     def reset(self):
