@@ -21,7 +21,7 @@ def main():
     renderer = GameRenderer(width=1024, height=600)
     
     # Variables del juego - sensibilidad fija
-    sensitivity = 0.85  # Valor fijo, no modificable
+    sensitivity = 0.85
     bird = Bird(sensitivity)
     pipes = []
     game_over = False
@@ -76,14 +76,22 @@ def main():
             if len(pipes) == 0 or pipes[-1].x < renderer.width - difficulty['spawn_distance']:
                 pipes.append(Pipe(renderer.width, difficulty['gap'], difficulty['velocity']))
                 
-            # Actualizar tubos
+            # Actualizar tubos y verificar puntuación
             for pipe in pipes[:]:
                 pipe.update()
-                if pipe.off_screen():
-                    pipes.remove(pipe)
+                
+                # NUEVA LÓGICA: Verificar si el pájaro pasó el tubo (puntaje justo al pasar)
+                if not pipe.was_passed() and pipe.is_passed_by_bird(bird.x):
+                    pipe.mark_as_passed()
                     is_new_record = score_manager.add_score()
                     if is_new_record:
                         print(f"🎉 ¡NUEVO RÉCORD! {score_manager.get_high_score()} puntos 🎉")
+                    else:
+                        print(f"✨ +1 punto! Total: {score_manager.get_current_score()}")
+                
+                # Eliminar tubos que salen de pantalla
+                if pipe.off_screen():
+                    pipes.remove(pipe)
             
             # Verificar colisiones
             bird_rect = bird.get_rect()
@@ -117,8 +125,6 @@ def main():
         # Mostrar advertencia si no detecta rostro
         if not game_over and not face_controller.is_face_detected():
             renderer.draw_warning("⚠️ No se detecta tu rostro - Acercate a la camara")
-        
-        # Cartel de dificultad ELIMINADO - ya no se muestra cuando aumenta la velocidad
         
         if game_over:
             renderer.draw_game_over(
