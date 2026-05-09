@@ -5,7 +5,7 @@ from server.face_controller import FaceController
 
 def main():
     print("\n" + "="*50)
-    print("   📷 MODO DEBUG - PRUEBA DE CÁMARA")
+    print("   MODO DEBUG - PRUEBA DE CÁMARA")
     print("="*50)
     print("Este modo te permite probar el reconocimiento facial")
     print("sin ejecutar el juego completo.")
@@ -43,7 +43,7 @@ def main():
                 smile = face_controller.get_smile_ratio()
                 
                 # Limpiar línea y mostrar info
-                print(f"\r📍 Nariz: {nose_y:.0f} | 👄 Boca: {mouth:.0%} | 📐 Inclinación: {tilt:.1f}° | 😊 Sonrisa: {smile:.0%}   ", end="")
+                print(f"\rNariz: {nose_y:.0f} | Boca: {mouth:.0%} | Inclinación: {tilt:.1f}° | Sonrisa: {smile:.0%}   ", end="")
             
             # Verificar tecla ESC para salir
             key = cv2.waitKey(1) & 0xFF

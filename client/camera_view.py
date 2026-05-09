@@ -57,16 +57,16 @@ class CameraView:
             
             # Indicador de parpadeo
             if is_blinking:
-                cv2.putText(display_frame, "😉 PARPADEO DETECTADO 😉", (w//2 - 100, h - 30), 
+                cv2.putText(display_frame, "PARPADEO DETECTADO", (w//2 - 100, h - 30), 
                            cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
         else:
-            cv2.putText(display_frame, "⚠️ NO SE DETECTA ROSTRO ⚠️", (w//2 - 150, h - 50), 
+            cv2.putText(display_frame, "NO SE DETECTA ROSTRO", (w//2 - 150, h - 50), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
             cv2.putText(display_frame, "ACERCATE A LA CAMARA", (w//2 - 120, h - 25), 
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2)
         
         # Texto de filtro Instagram
-        cv2.putText(display_frame, "✨ INSTAGRAM FILTERS ✨", (10, h - 20), 
+        cv2.putText(display_frame, "INSTAGRAM FILTERS", (10, h - 20), 
                    cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 0, 255), 1)
         
         cv2.imshow(self.window_name, display_frame)
