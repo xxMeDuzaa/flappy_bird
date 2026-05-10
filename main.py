@@ -17,11 +17,11 @@ def main():
     score_manager = ScoreManager()
     renderer = GameRenderer(width=1024, height=600)
     
-    sensitivity = 0.85
+    sensitivity = 1.0  # Ajusta este valor para cambiar la sensibilidad del control facial
     bird = Bird(sensitivity)
     pipes = []
     game_over = False
-    waiting_for_start = True  # Nuevo estado: esperando tecla para empezar
+    waiting_for_start = True  # Solo True al iniciar el programa
     clock = renderer.get_clock()
     
     print("\n" + "="*50)
@@ -47,26 +47,27 @@ def main():
                     pygame.quit()
                     sys.exit()
                 
-                # Si estamos en pantalla de inicio, cualquier tecla empieza el juego
+                # Solo en pantalla de inicio, cualquier tecla empieza el juego
                 if waiting_for_start:
                     waiting_for_start = False
                     print("✓ Juego iniciado!")
-                    # Reiniciar todas las variables
+                    # Inicializar juego
                     bird = Bird(sensitivity)
                     pipes = []
                     score_manager.reset_score()
                     game_over = False
                 
-                # Si el juego terminó, R reinicia
+                # Reiniciar cuando está en game over (sin pasar por pantalla de inicio)
                 if event.key == pygame.K_r and game_over:
+                    # Reiniciar directamente, sin pantalla de inicio
                     bird = Bird(sensitivity)
                     pipes = []
                     score_manager.reset_score()
                     game_over = False
-                    waiting_for_start = True  # Volver a pantalla de inicio
-                    print("✓ Volviendo a pantalla de inicio")
+                    # waiting_for_start se mantiene en False
+                    print("✓ Juego reiniciado!")
         
-        # Si estamos en pantalla de inicio
+        # Si estamos en pantalla de inicio (solo al abrir el programa)
         if waiting_for_start:
             renderer.draw_start_screen()
             renderer.update()
