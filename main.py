@@ -108,7 +108,6 @@ def main():
         
         # Renderizar juego
         renderer.clear()
-        renderer.draw_ground()
         renderer.draw_bird(bird.x, bird.y, bird.radius)
         
         for pipe in pipes:

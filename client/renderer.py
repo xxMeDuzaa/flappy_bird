@@ -138,7 +138,7 @@ class GameRenderer:
         time = pygame.time.get_ticks() / 500
         alpha_text = int(100 + (math.sin(time) * 100))
         
-        press_text = font_press.render("PRESIONA CUALQUIER TECLA", True, self.YELLOW)
+        press_text = font_press.render("PRESIONA CUALQUIER TECLA", True, self.BLACK)
         
         text_surface = pygame.Surface((press_text.get_width(), press_text.get_height()), pygame.SRCALPHA)
         text_surface.blit(press_text, (0, 0))
@@ -191,14 +191,6 @@ class GameRenderer:
         for i in range(3):
             line_y = bottom_rim_y + 8 + i * 7
             pygame.draw.line(self.screen, BORDER_GREEN, (bottom_rim_x + 5, line_y), (bottom_rim_x + bottom_rim_width - 5, line_y), 2)
-        
-    def draw_ground(self):
-        suelo_rect = pygame.Rect(0, self.height - 80, self.width, 80)
-        pygame.draw.rect(self.screen, self.BROWN, suelo_rect)
-        
-        for i in range(0, self.width, 40):
-            pygame.draw.line(self.screen, (0, 100, 0), (i, self.height - 80), (i + 15, self.height - 70), 3)
-            pygame.draw.line(self.screen, (0, 100, 0), (i + 15, self.height - 80), (i + 30, self.height - 75), 3)
             
     def draw_score(self, current_score, high_score):
         font = pygame.font.Font(None, 48)
