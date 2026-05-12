@@ -64,25 +64,23 @@ class GameRenderer:
         else:
             self.screen.fill(self.BLUE)
         
+    # client/renderer.py - En el método draw_bird
     def draw_bird(self, x, y, radius):
         """Dibuja el pájaro (imagen o dibujado)"""
         if self.bird_image is not None:
-            # Usar imagen
-            # Centrar la imagen en la posición del pájaro
+            # Usar imagen - centrada en la posición
+            # El tamaño de la imagen debe coincidir con el radio * 2
             bird_rect = self.bird_image.get_rect(center=(int(x), int(y)))
             self.screen.blit(self.bird_image, bird_rect)
         else:
             # Dibujar pájaro con formas geométricas (fallback)
-            # Cuerpo
             pygame.draw.circle(self.screen, self.YELLOW, (int(x), int(y)), radius)
-            # Ojo
             eye_size = max(3, radius // 5)
             pygame.draw.circle(self.screen, self.BLACK, (int(x) + radius//2, int(y) - radius//3), eye_size)
             pygame.draw.circle(self.screen, self.WHITE, (int(x) + radius//2 + 2, int(y) - radius//3 - 2), eye_size//2)
-            # Pico
             pico_size = radius // 2
             pygame.draw.polygon(self.screen, (255, 140, 0), 
-                               [(int(x) + radius, int(y)), 
+                            [(int(x) + radius, int(y)), 
                                 (int(x) + radius + pico_size, int(y)),
                                 (int(x) + radius, int(y) + pico_size//2)])
         

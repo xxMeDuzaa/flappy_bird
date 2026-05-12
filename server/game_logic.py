@@ -25,7 +25,7 @@ class Bird:
     def __init__(self, sensitivity=0.7):
         self.x = WIDTH // 4
         self.y = HEIGHT // 2
-        self.radius = 18
+        self.radius = 25
         self.sensitivity = sensitivity
         
     def reset(self):
