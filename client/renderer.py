@@ -1,6 +1,7 @@
 # client/renderer.py
 import pygame
 import math
+import os
 
 # Constantes de dibujo
 PIPE_WIDTH = 80
@@ -23,13 +24,36 @@ class GameRenderer:
         self.DARK_VIOLET = (88, 0, 128)
         self.VIOLET = (138, 43, 226)
         
+        # Cargar imagen de fondo 
+        self.background = None
+        self.background_image_path = os.path.join("assets", "imagenes", "background.jpg")
+        
+        if os.path.exists(self.background_image_path):
+            try:
+                self.background = pygame.image.load(self.background_image_path)
+                self.background = pygame.transform.scale(self.background, (width, height))
+                print(f"✓ Imagen de fondo cargada: {self.background_image_path}")
+            except Exception as e:
+                print(f"Error cargando imagen de fondo: {e}")
+                print("Usando fondo azul por defecto")
+        else:
+            print(f"No se encontró la imagen en: {self.background_image_path}")
+            print("Usando fondo azul por defecto")
+        
     def clear(self):
-        self.screen.fill(self.BLUE)
+        """Dibuja el fondo (imagen o color sólido)"""
+        if self.background is not None:
+            self.screen.blit(self.background, (0, 0))
+        else:
+            self.screen.fill(self.BLUE)
         
     def draw_start_screen(self):
-        """Pantalla de inicio con violeta oscuro"""
-        # Fondo violeta oscuro
-        self.screen.fill(self.DARK_VIOLET)
+        """Pantalla de inicio con imagen de fondo"""
+        # Usar la misma imagen de fondo si existe
+        if self.background is not None:
+            self.screen.blit(self.background, (0, 0))
+        else:
+            self.screen.fill(self.DARK_VIOLET)
         
         # Círculo de luz detrás del pájaro
         center_x = self.width // 2
@@ -62,13 +86,13 @@ class GameRenderer:
         font_press = pygame.font.Font(None, 36)
         
         time = pygame.time.get_ticks() / 500
-        alpha = int(100 + (math.sin(time) * 100))
+        alpha_text = int(100 + (math.sin(time) * 100))
         
         press_text = font_press.render("PRESIONA CUALQUIER TECLA", True, self.YELLOW)
         
         text_surface = pygame.Surface((press_text.get_width(), press_text.get_height()), pygame.SRCALPHA)
         text_surface.blit(press_text, (0, 0))
-        text_surface.set_alpha(alpha)
+        text_surface.set_alpha(alpha_text)
         self.screen.blit(text_surface, (self.width//2 - press_text.get_width()//2, self.height - 100))
         
         # Texto más pequeño con instrucciones
@@ -97,56 +121,46 @@ class GameRenderer:
         bx, by, bw, bh = bottom_rect
         
         # Colores más opacos (verde mate)
-        MAIN_GREEN = (60, 120, 60)      # Verde mate
-        BORDER_GREEN = (40, 90, 40)     # Borde más oscuro
-        RIM_GREEN = (50, 100, 50)       # Color del extremo
+        MAIN_GREEN = (60, 120, 60)
+        BORDER_GREEN = (40, 90, 40)
+        RIM_GREEN = (50, 100, 50)
         
         # === TUBO SUPERIOR ===
-        # Cuerpo del tubo
         pygame.draw.rect(self.screen, MAIN_GREEN, top_rect)
         
-        # Borde redondeado en la parte inferior (extremo más ancho)
         rim_width = w + 20
         rim_height = 30
         rim_x = x - 10
         rim_y = y + h - rim_height
         
-        # Extremo redondeado
         rim_rect = pygame.Rect(rim_x, rim_y, rim_width, rim_height)
         pygame.draw.rect(self.screen, RIM_GREEN, rim_rect, border_radius=10)
         pygame.draw.rect(self.screen, BORDER_GREEN, rim_rect, 2, border_radius=10)
         
-        # Líneas decorativas en el extremo
         for i in range(3):
             line_y = rim_y + 8 + i * 7
             pygame.draw.line(self.screen, BORDER_GREEN, (rim_x + 5, line_y), (rim_x + rim_width - 5, line_y), 2)
         
         # === TUBO INFERIOR ===
-        # Cuerpo del tubo
         pygame.draw.rect(self.screen, MAIN_GREEN, bottom_rect)
         
-        # Borde redondeado en la parte superior (extremo más ancho)
         bottom_rim_width = bw + 20
         bottom_rim_height = 30
         bottom_rim_x = bx - 10
         bottom_rim_y = by
         
-        # Extremo redondeado
         bottom_rim_rect = pygame.Rect(bottom_rim_x, bottom_rim_y, bottom_rim_width, bottom_rim_height)
         pygame.draw.rect(self.screen, RIM_GREEN, bottom_rim_rect, border_radius=10)
         pygame.draw.rect(self.screen, BORDER_GREEN, bottom_rim_rect, 2, border_radius=10)
         
-        # Líneas decorativas en el extremo
         for i in range(3):
             line_y = bottom_rim_y + 8 + i * 7
             pygame.draw.line(self.screen, BORDER_GREEN, (bottom_rim_x + 5, line_y), (bottom_rim_x + bottom_rim_width - 5, line_y), 2)
         
     def draw_ground(self):
-        # Suelo
         suelo_rect = pygame.Rect(0, self.height - 80, self.width, 80)
         pygame.draw.rect(self.screen, self.BROWN, suelo_rect)
         
-        # Líneas de pasto
         for i in range(0, self.width, 40):
             pygame.draw.line(self.screen, (0, 100, 0), (i, self.height - 80), (i + 15, self.height - 70), 3)
             pygame.draw.line(self.screen, (0, 100, 0), (i + 15, self.height - 80), (i + 30, self.height - 75), 3)
@@ -155,37 +169,30 @@ class GameRenderer:
         font = pygame.font.Font(None, 48)
         font_small = pygame.font.Font(None, 32)
         
-        # Marco para el score
         score_rect = pygame.Rect(20, 20, 180, 80)
-        pygame.draw.rect(self.screen, (0, 0, 0, 128), score_rect, border_radius=10)
+        pygame.draw.rect(self.screen, (0, 0, 0, 180), score_rect, border_radius=10)
         pygame.draw.rect(self.screen, self.WHITE, score_rect, 2, border_radius=10)
         
-        # Textos
         score_text = font.render(f"Score: {current_score}", True, self.WHITE)
         high_score_text = font_small.render(f"Best: {high_score}", True, self.YELLOW)
         
         self.screen.blit(score_text, (30, 30))
         self.screen.blit(high_score_text, (30, 70))
         
-        
     def draw_game_over(self, score, high_score):
-        # Overlay semitransparente
         overlay = pygame.Surface((self.width, self.height))
         overlay.set_alpha(128)
         overlay.fill((0, 0, 0))
         self.screen.blit(overlay, (0, 0))
         
-        # Fuentes
         font_big = pygame.font.Font(None, 72)
         font_med = pygame.font.Font(None, 36)
         
-        # Textos
         game_over_text = font_big.render("GAME OVER", True, self.RED)
         score_text = font_med.render(f"Puntaje: {score}", True, self.WHITE)
         high_text = font_med.render(f"Record: {high_score}", True, self.YELLOW)
         restart_text = font_med.render("Presiona R para reiniciar", True, self.WHITE)
         
-        # Posiciones
         self.screen.blit(game_over_text, (self.width//2 - game_over_text.get_width()//2, self.height//2 - 100))
         self.screen.blit(score_text, (self.width//2 - score_text.get_width()//2, self.height//2 - 20))
         self.screen.blit(high_text, (self.width//2 - high_text.get_width()//2, self.height//2 + 20))
@@ -195,7 +202,6 @@ class GameRenderer:
         font = pygame.font.Font(None, 24)
         warning = font.render(text, True, self.RED)
         
-        # Fondo del warning
         bg_rect = pygame.Rect(self.width//2 - warning.get_width()//2 - 10, self.height - 130, 
                               warning.get_width() + 20, 40)
         pygame.draw.rect(self.screen, (0, 0, 0, 180), bg_rect, border_radius=5)
