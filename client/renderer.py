@@ -24,7 +24,7 @@ class GameRenderer:
         self.DARK_VIOLET = (88, 0, 128)
         self.VIOLET = (138, 43, 226)
         
-        # Cargar imagen de fondo 
+        # Cargar imagen de fondo
         self.background = None
         self.background_image_path = os.path.join("assets", "imagenes", "background.jpg")
         
@@ -40,6 +40,23 @@ class GameRenderer:
             print(f"No se encontró la imagen en: {self.background_image_path}")
             print("Usando fondo azul por defecto")
         
+        # Cargar imagen del pájaro
+        self.bird_image = None
+        self.bird_image_path = os.path.join("assets", "imagenes", "bird.PNG")
+        self.bird_size = 170  # Tamaño de la imagen del pájaro (ancho y alto)
+        
+        if os.path.exists(self.bird_image_path):
+            try:
+                self.bird_image = pygame.image.load(self.bird_image_path)
+                self.bird_image = pygame.transform.scale(self.bird_image, (self.bird_size, self.bird_size))
+                print(f"✓ Imagen del pájaro cargada: {self.bird_image_path}")
+            except Exception as e:
+                print(f"Error cargando imagen del pájaro: {e}")
+                print("Usando pájaro dibujado por defecto")
+        else:
+            print(f"No se encontró la imagen del pájaro en: {self.bird_image_path}")
+            print("Usando pájaro dibujado por defecto")
+        
     def clear(self):
         """Dibuja el fondo (imagen o color sólido)"""
         if self.background is not None:
@@ -47,9 +64,30 @@ class GameRenderer:
         else:
             self.screen.fill(self.BLUE)
         
+    def draw_bird(self, x, y, radius):
+        """Dibuja el pájaro (imagen o dibujado)"""
+        if self.bird_image is not None:
+            # Usar imagen
+            # Centrar la imagen en la posición del pájaro
+            bird_rect = self.bird_image.get_rect(center=(int(x), int(y)))
+            self.screen.blit(self.bird_image, bird_rect)
+        else:
+            # Dibujar pájaro con formas geométricas (fallback)
+            # Cuerpo
+            pygame.draw.circle(self.screen, self.YELLOW, (int(x), int(y)), radius)
+            # Ojo
+            eye_size = max(3, radius // 5)
+            pygame.draw.circle(self.screen, self.BLACK, (int(x) + radius//2, int(y) - radius//3), eye_size)
+            pygame.draw.circle(self.screen, self.WHITE, (int(x) + radius//2 + 2, int(y) - radius//3 - 2), eye_size//2)
+            # Pico
+            pico_size = radius // 2
+            pygame.draw.polygon(self.screen, (255, 140, 0), 
+                               [(int(x) + radius, int(y)), 
+                                (int(x) + radius + pico_size, int(y)),
+                                (int(x) + radius, int(y) + pico_size//2)])
+        
     def draw_start_screen(self):
         """Pantalla de inicio con imagen de fondo"""
-        # Usar la misma imagen de fondo si existe
         if self.background is not None:
             self.screen.blit(self.background, (0, 0))
         else:
@@ -67,7 +105,21 @@ class GameRenderer:
             self.screen.blit(circle_surface, (center_x - radius, center_y - radius))
         
         # Dibujar pájaro en el centro (más grande)
+        # Guardar la imagen original y restaurarla temporalmente para la pantalla de inicio
+        original_bird_image = self.bird_image
+        original_bird_size = self.bird_size
+        
+        # Para la pantalla de inicio, usamos un pájaro más grande
+        if original_bird_image is not None:
+            self.bird_image = pygame.transform.scale(original_bird_image, (170, 170))
+            self.bird_size = 170
+        
         self.draw_bird(center_x, center_y, 25)
+        
+        # Restaurar la imagen original
+        if original_bird_image is not None:
+            self.bird_image = original_bird_image
+            self.bird_size = original_bird_size
         
         # Título del juego
         font_title = pygame.font.Font(None, 72)
@@ -82,7 +134,7 @@ class GameRenderer:
         sub_text = font_sub.render("CONTROL FACIAL", True, self.WHITE)
         self.screen.blit(sub_text, (self.width//2 - sub_text.get_width()//2, 150))
         
-        # Mensaje "Presiona cualquier tecla" con efecto de parpadeo
+        # Mensaje "Presiona cualquier tecla"
         font_press = pygame.font.Font(None, 36)
         
         time = pygame.time.get_ticks() / 500
@@ -99,21 +151,6 @@ class GameRenderer:
         font_small = pygame.font.Font(None, 24)
         inst_text = font_small.render("Mueve tu nariz arriba/abajo para controlar el pájaro", True, self.WHITE)
         self.screen.blit(inst_text, (self.width//2 - inst_text.get_width()//2, self.height - 60))
-        
-    def draw_bird(self, x, y, radius):
-        """Dibuja el pájaro con tamaño variable"""
-        # Cuerpo
-        pygame.draw.circle(self.screen, self.YELLOW, (int(x), int(y)), radius)
-        # Ojo
-        eye_size = max(3, radius // 5)
-        pygame.draw.circle(self.screen, self.BLACK, (int(x) + radius//2, int(y) - radius//3), eye_size)
-        pygame.draw.circle(self.screen, self.WHITE, (int(x) + radius//2 + 2, int(y) - radius//3 - 2), eye_size//2)
-        # Pico
-        pico_size = radius // 2
-        pygame.draw.polygon(self.screen, (255, 140, 0), 
-                           [(int(x) + radius, int(y)), 
-                            (int(x) + radius + pico_size, int(y)),
-                            (int(x) + radius, int(y) + pico_size//2)])
         
     def draw_pipe(self, top_rect, bottom_rect):
         """Dibuja tubos con bordes redondeados y extremos más anchos"""
