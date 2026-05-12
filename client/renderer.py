@@ -33,7 +33,7 @@ class GameRenderer:
         
         # Círculo de luz detrás del pájaro
         center_x = self.width // 2
-        center_y = self.height // 2 + 50  # Más abajo
+        center_y = self.height // 2 + 50
         
         for i in range(3):
             radius = 100 - i * 20
@@ -50,9 +50,7 @@ class GameRenderer:
         title_text = font_title.render("FLAPPY BIRD", True, self.YELLOW)
         title_shadow = font_title.render("FLAPPY BIRD", True, (100, 100, 0))
         
-        # Sombra del título
         self.screen.blit(title_shadow, (self.width//2 - title_text.get_width()//2 + 3, 80 + 3))
-        # Título principal
         self.screen.blit(title_text, (self.width//2 - title_text.get_width()//2, 80))
         
         # Subtítulo con control facial
@@ -63,13 +61,11 @@ class GameRenderer:
         # Mensaje "Presiona cualquier tecla" con efecto de parpadeo
         font_press = pygame.font.Font(None, 36)
         
-        # Efecto de parpadeo
         time = pygame.time.get_ticks() / 500
         alpha = int(100 + (math.sin(time) * 100))
         
         press_text = font_press.render("PRESIONA CUALQUIER TECLA", True, self.YELLOW)
         
-        # Crear superficie con transparencia para el texto
         text_surface = pygame.Surface((press_text.get_width(), press_text.get_height()), pygame.SRCALPHA)
         text_surface.blit(press_text, (0, 0))
         text_surface.set_alpha(alpha)
@@ -79,10 +75,6 @@ class GameRenderer:
         font_small = pygame.font.Font(None, 24)
         inst_text = font_small.render("Mueve tu nariz arriba/abajo para controlar el pájaro", True, self.WHITE)
         self.screen.blit(inst_text, (self.width//2 - inst_text.get_width()//2, self.height - 60))
-        
-        # Icono de cámara decorativo
-        camera_icon = font_small.render("-", True, self.WHITE)
-        self.screen.blit(camera_icon, (self.width//2 - 10, self.height - 35))
         
     def draw_bird(self, x, y, radius):
         """Dibuja el pájaro con tamaño variable"""
@@ -100,12 +92,54 @@ class GameRenderer:
                             (int(x) + radius, int(y) + pico_size//2)])
         
     def draw_pipe(self, top_rect, bottom_rect):
-        # Tubo superior
-        pygame.draw.rect(self.screen, self.GREEN, top_rect)
-        pygame.draw.rect(self.screen, (0, 100, 0), top_rect, 3)
-        # Tubo inferior
-        pygame.draw.rect(self.screen, self.GREEN, bottom_rect)
-        pygame.draw.rect(self.screen, (0, 100, 0), bottom_rect, 3)
+        """Dibuja tubos con bordes redondeados y extremos más anchos"""
+        x, y, w, h = top_rect
+        bx, by, bw, bh = bottom_rect
+        
+        # Colores más opacos (verde mate)
+        MAIN_GREEN = (60, 120, 60)      # Verde mate
+        BORDER_GREEN = (40, 90, 40)     # Borde más oscuro
+        RIM_GREEN = (50, 100, 50)       # Color del extremo
+        
+        # === TUBO SUPERIOR ===
+        # Cuerpo del tubo
+        pygame.draw.rect(self.screen, MAIN_GREEN, top_rect)
+        
+        # Borde redondeado en la parte inferior (extremo más ancho)
+        rim_width = w + 20
+        rim_height = 30
+        rim_x = x - 10
+        rim_y = y + h - rim_height
+        
+        # Extremo redondeado
+        rim_rect = pygame.Rect(rim_x, rim_y, rim_width, rim_height)
+        pygame.draw.rect(self.screen, RIM_GREEN, rim_rect, border_radius=10)
+        pygame.draw.rect(self.screen, BORDER_GREEN, rim_rect, 2, border_radius=10)
+        
+        # Líneas decorativas en el extremo
+        for i in range(3):
+            line_y = rim_y + 8 + i * 7
+            pygame.draw.line(self.screen, BORDER_GREEN, (rim_x + 5, line_y), (rim_x + rim_width - 5, line_y), 2)
+        
+        # === TUBO INFERIOR ===
+        # Cuerpo del tubo
+        pygame.draw.rect(self.screen, MAIN_GREEN, bottom_rect)
+        
+        # Borde redondeado en la parte superior (extremo más ancho)
+        bottom_rim_width = bw + 20
+        bottom_rim_height = 30
+        bottom_rim_x = bx - 10
+        bottom_rim_y = by
+        
+        # Extremo redondeado
+        bottom_rim_rect = pygame.Rect(bottom_rim_x, bottom_rim_y, bottom_rim_width, bottom_rim_height)
+        pygame.draw.rect(self.screen, RIM_GREEN, bottom_rim_rect, border_radius=10)
+        pygame.draw.rect(self.screen, BORDER_GREEN, bottom_rim_rect, 2, border_radius=10)
+        
+        # Líneas decorativas en el extremo
+        for i in range(3):
+            line_y = bottom_rim_y + 8 + i * 7
+            pygame.draw.line(self.screen, BORDER_GREEN, (bottom_rim_x + 5, line_y), (bottom_rim_x + bottom_rim_width - 5, line_y), 2)
         
     def draw_ground(self):
         # Suelo
@@ -133,21 +167,6 @@ class GameRenderer:
         self.screen.blit(score_text, (30, 30))
         self.screen.blit(high_score_text, (30, 70))
         
-    def draw_instructions(self):
-        font = pygame.font.Font(None, 24)
-        
-        # Panel de instrucciones
-        panel_rect = pygame.Rect(self.width//2 - 250, self.height - 50, 500, 40)
-        pygame.draw.rect(self.screen, (0, 0, 0, 180), panel_rect, border_radius=5)
-        
-        # Textos de instrucciones
-        inst1 = font.render("Mueve NARIZ arriba/abajo", True, self.WHITE)
-        inst2 = font.render("R: Reiniciar", True, self.WHITE)
-        inst3 = font.render("ESC: Salir", True, self.WHITE)
-        
-        self.screen.blit(inst1, (self.width//2 - 230, self.height - 40))
-        self.screen.blit(inst2, (self.width//2 - 1, self.height - 40))
-        self.screen.blit(inst3, (self.width//2 + 140, self.height - 40))
         
     def draw_game_over(self, score, high_score):
         # Overlay semitransparente

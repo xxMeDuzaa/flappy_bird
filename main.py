@@ -116,7 +116,6 @@ def main():
             renderer.draw_pipe(top_rect, bottom_rect)
         
         renderer.draw_score(score_manager.get_current_score(), score_manager.get_high_score())
-        renderer.draw_instructions()
         
         if not game_over and not face_controller.is_face_detected():
             renderer.draw_warning("No se detecta tu rostro - Acercate a la camara")
