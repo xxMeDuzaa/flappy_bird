@@ -131,7 +131,7 @@ class BirdSprite:
         # La pupila mira hacia donde va el pájaro.
         look = max(-1.0, min(1.0, self._velocity_y / 600))
         pupil = (eye[0] + 0.2 * r, eye[1] + 0.18 * r * look)
-        pygame.draw.circle(canvas, PUPIL, pupil, max(1.0, 0.15 * r))
+        pygame.draw.circle(canvas, PUPIL, pupil, max(1.0, 0.2 * r))
 
     def _draw_beak(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         # Boca más abierta mientras sube con esfuerzo.
