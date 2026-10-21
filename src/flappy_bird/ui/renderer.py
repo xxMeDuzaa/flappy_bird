@@ -48,7 +48,9 @@ class Renderer:
         self._menu_bird = BirdSprite(config.bird.radius * MENU_BIRD_SCALE)
         self._menu_time = 0.0
         self._level_birds = [
-            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i) for i in range(len(config.difficulty))
+            # Son muy chicos para pixelarlos: se dibujan suaves.
+            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i, pixel_size=1)
+            for i in range(len(config.difficulty))
         ]
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
