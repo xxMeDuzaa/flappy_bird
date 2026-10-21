@@ -112,13 +112,12 @@ class BirdSprite:
         pygame.draw.polygon(canvas, OUTLINE, points, line)
 
     def _draw_tail(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        # Cola en abanico: angosta donde se une al cuerpo y ancha en la punta, con el
-        # borde final recto e inclinado. Nace dentro del cuerpo para que la unión quede
-        # tapada y se vea el "cuello" angosto.
-        neck_top = (cx - 1.1 * r, cy - 0.02 * r)
-        neck_bottom = (cx - 1.05 * r, cy + 0.2 * r)
-        end_top = (cx - 1.9 * r, cy - 0.52 * r)
-        end_bottom = (cx - 2.12 * r, cy + 0.08 * r)
+        # Cola en abanico: se une al cuerpo con una base ancha (acompaña su curva) y se
+        # abre un poco más hacia la punta, con el borde final recto e inclinado.
+        neck_top = (cx - 1.0 * r, cy - 0.26 * r)
+        neck_bottom = (cx - 0.95 * r, cy + 0.36 * r)
+        end_top = (cx - 1.92 * r, cy - 0.62 * r)
+        end_bottom = (cx - 2.16 * r, cy + 0.2 * r)
         self._poly(
             canvas, self._colors.body_shade, [neck_top, end_top, end_bottom, neck_bottom], line
         )
