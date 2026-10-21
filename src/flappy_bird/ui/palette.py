@@ -257,18 +257,18 @@ LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
         wing_shade=(204, 146, 80),
     ),
     BirdPalette(
-        body=(232, 102, 45),
-        body_shade=(196, 72, 36),
-        belly=(244, 150, 100),
-        wing=(230, 140, 58),
-        wing_shade=(186, 100, 40),
+        body=(222, 68, 40),
+        body_shade=(176, 44, 30),
+        belly=(236, 118, 84),
+        wing=(226, 124, 44),
+        wing_shade=(176, 86, 30),
     ),
     BirdPalette(
-        body=(196, 40, 38),
-        body_shade=(150, 28, 30),
-        belly=(218, 92, 74),
-        wing=(214, 104, 32),
-        wing_shade=(160, 72, 24),
+        body=(176, 28, 34),
+        body_shade=(124, 18, 24),
+        belly=(204, 70, 64),
+        wing=(204, 96, 30),
+        wing_shade=(150, 64, 20),
     ),
 )
 
