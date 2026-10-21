@@ -142,15 +142,16 @@ class Renderer:
     # -------------------------------------------------------------------- HUD
 
     def _draw_hud(self, score: int, best: int, world: World) -> None:
-        score_text = render_text(4, f"Score {score}", theme.WHITE)
-        best_text = render_text(2, f"Record {best}", theme.TITLE)
-        panel = pygame.Rect(20, 20, max(score_text.get_width(), best_text.get_width()) + 32, 80)
-        self._panel(panel)
-        self._screen.blit(score_text, (panel.x + 16, panel.y + 14))
-        self._screen.blit(best_text, (panel.x + 16, panel.y + 54))
-
+        """Puntaje, récord y nivel con el mismo formato de "píldora" que el menú."""
         level = self._config.difficulty.index(world.difficulty) + 1
-        self._blit_text(f"Nivel {level}", 2, theme.WHITE, topleft=(panel.x + 4, panel.bottom + 10))
+        self._badges(
+            (
+                (theme.WHITE, f"Score {score}"),
+                (theme.TITLE, f"Record {best}"),
+                # El punto del nivel toma el color actual del pájaro.
+                (self._bird_sprite.colors.body, f"Nivel {level}"),
+            )
+        )
 
     def _draw_menu(self, control_name: str, best: int) -> None:
         cx = self._width // 2
@@ -194,8 +195,12 @@ class Renderer:
 
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
+        self._badges(((theme.GREEN, control_name), (theme.TITLE, f"Record {best}")))
+
+    def _badges(self, items: tuple[tuple[theme.Color, str], ...]) -> None:
+        """Columna de "píldoras" arriba a la izquierda: un punto de color y un texto."""
         x, y = 20, 20
-        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Record {best}")):
+        for dot, label in items:
             text = render_text(2, label, theme.WHITE)
             badge = pygame.Rect(x, y, text.get_width() + 46, 32)
             self._panel(badge, radius=16)
