@@ -1,9 +1,9 @@
 """El pájaro, dibujado por código en estilo pixel art (sin imágenes).
 
 Las formas (cuerpo, ala, ojo, pico) se dibujan en una grilla chica, con bordes
-duros (sin suavizado) y contorno de 1 píxel, y después se agrandan con vecino
-más cercano: cada píxel del sprite se ve como un bloque cuadrado de 3x3 o más
-en pantalla, como en las consolas clásicas.
+duros (sin suavizado) y contorno grueso, y después se agrandan con vecino
+más cercano: cada píxel del sprite se ve como un bloque cuadrado de 2x2 (juego) o
+3x3 (menú) en pantalla, como en las consolas clásicas.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -22,10 +22,13 @@ Point = tuple[float, float]
 
 #: Un "píxel" del sprite cada tantos px de radio (mínimo ``MIN_PIXEL_SIZE``): el
 #: pájaro grande del menú usa bloques más grandes, así ambos se ven igual de retro.
-RADIUS_PER_PIXEL = 10
-MIN_PIXEL_SIZE = 3
+RADIUS_PER_PIXEL = 16
+MIN_PIXEL_SIZE = 2
 #: La inclinación va de a pasos: los sprites retro giraban "por cuadros".
 TILT_STEP_DEGREES = 7.5
+#: Grosor del contorno, en píxeles del sprite.
+OUTLINE_PIXELS = 2
+DETAIL_OUTLINE_PIXELS = 1
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -99,12 +102,12 @@ class BirdSprite:
         width, height = round(r * 5.0), round(r * 4.3)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
-        line = 1  # contorno de un píxel, como en el pixel art
-
-        self._draw_body(canvas, cx, cy, r, line)
-        self._draw_eye(canvas, cx, cy, r, line)
-        self._draw_beak(canvas, cx, cy, r, line)
-        self._draw_wing(canvas, cx, cy, r, line)
+        # Silueta (cuerpo y ala) con contorno grueso; ojo y pico, que son piezas
+        # chicas, con contorno fino para que no queden tapados.
+        self._draw_body(canvas, cx, cy, r, OUTLINE_PIXELS)
+        self._draw_eye(canvas, cx, cy, r, DETAIL_OUTLINE_PIXELS)
+        self._draw_beak(canvas, cx, cy, r, DETAIL_OUTLINE_PIXELS)
+        self._draw_wing(canvas, cx, cy, r, OUTLINE_PIXELS)
         return canvas
 
     @staticmethod
