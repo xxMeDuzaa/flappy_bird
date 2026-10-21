@@ -32,6 +32,7 @@ SUBTLE_PANEL_ALPHA = 45
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
+PIPE_OUTLINE = 3
 PREVIEW_MARGIN = 16
 
 
@@ -82,7 +83,7 @@ class Renderer:
     def draw_loading(self, message: str) -> None:
         self._draw_background()
         self._screen.blit(self._dim_overlay, (0, 0))
-        self._text_centered(message, 4, theme.WHITE, self._height // 2)
+        self._title(message, 5, theme.WHITE, (self._width // 2, self._height // 2))
 
     def render(
         self,
@@ -98,11 +99,14 @@ class Renderer:
             self._draw_world(session.world)
             self._draw_hud(session.world.score, session.best_score, session.world)
             if session.state is GameState.PAUSED:
-                self._draw_message_overlay("PAUSA", "Presiona P para continuar")
+                self._draw_message_overlay(
+                    "PAUSA", None, ((("P",), "Continuar"), (("ESC",), "Salir"))
+                )
             elif session.waiting_for_player:
                 self._draw_message_overlay(
                     "No se detecta tu rostro",
                     "Ubicate frente a la camara con buena luz para seguir jugando",
+                    ((("P",), "Pausa"), (("ESC",), "Salir")),
                 )
             elif session.state is GameState.GAME_OVER:
                 self._draw_game_over(session.world.score, session.best_score, session.new_record)
@@ -125,19 +129,24 @@ class Renderer:
         self._bird_sprite.draw(self._screen, (bird.x, bird.y), tilt)
 
     def _draw_pipe(self, pipe: Pipe) -> None:
+        """Tubos con el mismo estilo de dibujo que el pájaro: contorno oscuro grueso y volumen."""
         top, bottom = pipe.top_rect, pipe.bottom_rect
         for rect, rim_y in ((top, top.bottom - RIM_HEIGHT), (bottom, bottom.y)):
             body = pygame.Rect(round(rect.x), round(rect.y), round(rect.width), round(rect.height))
-            pygame.draw.rect(self._screen, theme.PIPE_BODY, body)
-            highlight = pygame.Rect(body.x + 8, body.y, 10, body.height)
-            pygame.draw.rect(self._screen, theme.PIPE_HIGHLIGHT, highlight)
-            pygame.draw.rect(self._screen, theme.PIPE_BORDER, body, 2)
-
+            self._shaded_block(body, radius=0)
             rim = pygame.Rect(
                 body.x - RIM_OVERHANG, round(rim_y), body.width + 2 * RIM_OVERHANG, RIM_HEIGHT
             )
-            pygame.draw.rect(self._screen, theme.PIPE_RIM, rim, border_radius=8)
-            pygame.draw.rect(self._screen, theme.PIPE_BORDER, rim, 2, border_radius=8)
+            self._shaded_block(rim, radius=6)
+
+    def _shaded_block(self, rect: pygame.Rect, radius: int) -> None:
+        """Rectángulo verde con luz a la izquierda, sombra a la derecha y contorno."""
+        pygame.draw.rect(self._screen, theme.PIPE_BODY, rect, border_radius=radius)
+        light = pygame.Rect(rect.x + 8, rect.y, 10, rect.height)
+        shade = pygame.Rect(rect.right - 18, rect.y, 12, rect.height)
+        self._screen.fill(theme.PIPE_HIGHLIGHT, light.clip(rect))
+        self._screen.fill(theme.PIPE_SHADE, shade.clip(rect))
+        pygame.draw.rect(self._screen, theme.OUTLINE, rect, PIPE_OUTLINE, border_radius=radius)
 
     # -------------------------------------------------------------------- HUD
 
@@ -167,7 +176,7 @@ class Renderer:
         count = len(self._level_birds)
         strip = pygame.Rect(0, 0, MENU_LEVEL_SPACING * count + 24, 64)
         strip.center = (cx, 372)
-        self._panel(strip, radius=14)
+        self._panel(strip, radius=14, border=False)
         self._blit_text("NIVELES", 2, theme.MUTED, center=(cx, strip.y + 14))
         first_x = cx - MENU_LEVEL_SPACING * (count - 1) / 2
         for i, bird in enumerate(self._level_birds):
@@ -189,7 +198,7 @@ class Renderer:
             "Mueve la nariz para guiar al pajaro", 2, theme.MUTED, center=(cx, card.y + 54)
         )
         self._key_hints(
-            (("P", "Pausa"), ("F11", "Pantalla completa"), ("ESC", "Salir")),
+            ((("P",), "Pausa"), (("F11",), "Pantalla completa"), (("ESC",), "Salir")),
             center=(cx, card.y + 82),
         )
 
@@ -208,61 +217,99 @@ class Renderer:
             self._screen.blit(text, text.get_rect(midleft=(badge.x + 32, badge.centery)))
             y = badge.bottom + 8
 
-    def _key_hints(self, hints: tuple[tuple[str, str], ...], center: tuple[int, int]) -> None:
-        """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción."""
-        parts = [
-            (render_text(2, key, theme.OUTLINE), render_text(2, label, theme.MUTED))
-            for key, label in hints
+    def _key_hints(
+        self, hints: tuple[tuple[tuple[str, ...], str], ...], center: tuple[int, int]
+    ) -> None:
+        """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción.
+
+        Cada ayuda es ``(teclas, acción)``; varias teclas para la misma acción se
+        dibujan una al lado de la otra.
+        """
+        cap_gap, inner, after_keys, gap = 6, 6, 8, 26
+        groups = [
+            (
+                [render_text(2, key, theme.OUTLINE) for key in keys],
+                render_text(2, label, theme.MUTED),
+            )
+            for keys, label in hints
         ]
-        gap, inner, after_key = 26, 6, 8
-        total = sum(k.get_width() + 2 * inner + after_key + lbl.get_width() for k, lbl in parts)
-        total += gap * (len(parts) - 1)
+
+        def group_width(keys: list[pygame.Surface], label: pygame.Surface) -> int:
+            caps = sum(k.get_width() + 2 * inner for k in keys) + cap_gap * (len(keys) - 1)
+            return int(caps + after_keys + label.get_width())
+
+        total = sum(group_width(k, lbl) for k, lbl in groups) + gap * (len(groups) - 1)
         x = center[0] - total // 2
-        for key_text, label_text in parts:
-            cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8)
-            cap.centery = center[1]
-            pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
-            self._screen.blit(key_text, key_text.get_rect(center=cap.center))
-            label_x = cap.right + after_key
-            self._screen.blit(label_text, label_text.get_rect(midleft=(label_x, center[1])))
-            x = label_x + label_text.get_width() + gap
+        for keys, label in groups:
+            for key_text in keys:
+                cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8)
+                cap.centery = center[1]
+                pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
+                self._screen.blit(key_text, key_text.get_rect(center=cap.center))
+                x = cap.right + cap_gap
+            x += after_keys - cap_gap
+            self._screen.blit(label, label.get_rect(midleft=(x, center[1])))
+            x += label.get_width() + gap
 
     def _draw_game_over(self, score: int, best: int, new_record: bool) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
-        mid = self._height // 2
-        self._title("GAME OVER", 8, theme.RED, (self._width // 2, mid - 110))
+        cx, mid = self._width // 2, self._height // 2
+        self._title("GAME OVER", 8, theme.RED, (cx, mid - 110))
         if new_record:
             self._text_centered("Nuevo record!", 3, theme.TITLE, mid - 40)
         self._text_centered(f"Puntaje {score}", 4, theme.WHITE, mid + 10)
         self._text_centered(f"Record {best}", 3, theme.TITLE, mid + 52)
-        self._text_centered("R o Espacio: reiniciar   |   ESC: salir", 2, theme.MUTED, mid + 120)
+        self._key_hints(
+            ((("R", "ESPACIO"), "Reiniciar"), (("ESC",), "Salir")), center=(cx, mid + 120)
+        )
 
-    def _draw_message_overlay(self, title: str, subtitle: str) -> None:
+    def _draw_message_overlay(
+        self,
+        title: str,
+        subtitle: str | None,
+        hints: tuple[tuple[tuple[str, ...], str], ...],
+    ) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
-        self._text_centered(title, 5, theme.WHITE, self._height // 2 - 24)
-        self._text_centered(subtitle, 2, theme.MUTED, self._height // 2 + 30)
+        cx, mid = self._width // 2, self._height // 2
+        # Escala 6 si entra cómodo; si no, 5 (los títulos largos no deben tocar los bordes).
+        scale = 6 if len(title) * 6 * 6 < self._width - 160 else 5
+        self._title(title, scale, theme.WHITE, (cx, mid - 40))
+        if subtitle:
+            self._text_centered(subtitle, 2, theme.MUTED, mid + 20)
+        self._key_hints(hints, center=(cx, mid + 60))
 
     def _draw_preview(self, preview: PreviewFrame) -> None:
+        """Vista de la cámara dentro de un recuadro como el resto de la interfaz."""
+        pad, header = 8, 28
+        card = pygame.Rect(0, 0, preview.width + 2 * pad, preview.height + pad + header)
+        card.topright = (self._width - PREVIEW_MARGIN, PREVIEW_MARGIN)
+        self._panel(card, radius=14, border=False)
+
+        dot_color = theme.GREEN if preview.marker is not None else theme.RED
+        pygame.draw.circle(self._screen, dot_color, (card.x + pad + 8, card.y + header // 2 + 2), 6)
+        label = render_text(2, "Camara", theme.WHITE)
+        self._screen.blit(
+            label, label.get_rect(midleft=(card.x + pad + 22, card.y + header // 2 + 2))
+        )
+
+        x, y = card.x + pad, card.y + header
         image = pygame.image.frombuffer(preview.rgb, (preview.width, preview.height), "RGB")
-        x = self._width - preview.width - PREVIEW_MARGIN
-        y = PREVIEW_MARGIN
         self._screen.blit(image, (x, y))
 
         # Banda de calibración: la zona de la imagen que recorre toda la pantalla.
         tracking = self._config.tracking
         for ratio in (tracking.range_top, tracking.range_bottom):
             line_y = y + round(ratio * preview.height)
-            pygame.draw.line(
-                self._screen, theme.YELLOW, (x, line_y), (x + preview.width, line_y), 1
-            )
+            pygame.draw.line(self._screen, theme.TITLE, (x, line_y), (x + preview.width, line_y), 1)
 
         if preview.marker is not None:
             mx = x + round(preview.marker[0] * preview.width)
             my = y + round(preview.marker[1] * preview.height)
+            pygame.draw.circle(self._screen, theme.OUTLINE, (mx, my), 7)
             pygame.draw.circle(self._screen, theme.RED, (mx, my), 5)
 
-        border = pygame.Rect(x, y, preview.width, preview.height)
-        pygame.draw.rect(self._screen, theme.WHITE, border, 2, border_radius=4)
+        frame = pygame.Rect(x, y, preview.width, preview.height)
+        pygame.draw.rect(self._screen, theme.OUTLINE, frame, 2, border_radius=4)
 
     # ---------------------------------------------------------------- helpers
 
