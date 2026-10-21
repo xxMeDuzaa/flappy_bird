@@ -24,6 +24,9 @@ MENU_SCROLL_SPEED = 90.0
 MENU_BIRD_SCALE = 2.2
 MENU_BOB_AMPLITUDE = 10.0
 MENU_BOB_SPEED = 2.1
+#: Pajaritos que muestran el color de cada nivel en el menú.
+MENU_LEVEL_BIRD_RADIUS = 10
+MENU_LEVEL_SPACING = 76
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
@@ -41,6 +44,9 @@ class Renderer:
         self._bird_sprite = BirdSprite(config.bird.radius)
         self._menu_bird = BirdSprite(config.bird.radius * MENU_BIRD_SCALE)
         self._menu_time = 0.0
+        self._level_birds = [
+            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i) for i in range(len(config.difficulty))
+        ]
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
         self._dim_overlay.fill((0, 0, 0, 140))
@@ -56,6 +62,8 @@ class Renderer:
                 MENU_BOB_AMPLITUDE * MENU_BOB_SPEED * math.cos(self._menu_time * MENU_BOB_SPEED)
             )
             self._menu_bird.update(dt, bob_velocity)
+            for bird in self._level_birds:
+                bird.update(dt, 0.0)
         else:
             difficulty = session.world.difficulty
             level = self._config.difficulty.index(difficulty)
@@ -83,7 +91,7 @@ class Renderer:
         self._draw_background()
 
         if session.state is GameState.MENU:
-            self._draw_menu(control_name)
+            self._draw_menu(control_name, session.best_score)
         else:
             self._draw_world(session.world)
             self._draw_hud(session.world.score, session.best_score, session.world)
@@ -140,47 +148,78 @@ class Renderer:
         level = self._config.difficulty.index(world.difficulty) + 1
         self._blit_text(f"Nivel {level}", 26, theme.WHITE, topleft=(panel.x, panel.bottom + 8))
 
-    def _draw_menu(self, control_name: str) -> None:
+    def _draw_menu(self, control_name: str, best: int) -> None:
         cx = self._width // 2
-        cy = self._height // 2 + 30
 
-        for i in range(3):  # halo detrás del pájaro
-            radius = 100 - i * 20
-            halo = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(halo, (*theme.VIOLET, 70 - i * 20), (radius, radius), radius)
-            self._screen.blit(halo, (cx - radius, cy - radius))
+        self._outlined_text("FLAPPY BIRD", 92, theme.TITLE, (cx, 82), thickness=4)
+        self._outlined_text("CONTROL FACIAL", 34, theme.WHITE, (cx, 140), thickness=2)
 
         bob = math.sin(self._menu_time * MENU_BOB_SPEED) * MENU_BOB_AMPLITUDE
-        self._menu_bird.draw(self._screen, (cx, cy + bob))
+        self._menu_bird.draw(self._screen, (cx, 248 + bob))
 
-        title = font(84)
-        shadow = title.render("FLAPPY BIRD", True, theme.YELLOW_SHADOW)
-        text = title.render("FLAPPY BIRD", True, theme.YELLOW)
-        self._screen.blit(shadow, shadow.get_rect(center=(cx + 3, 103)))
-        self._screen.blit(text, text.get_rect(center=(cx, 100)))
-        self._text_centered("CONTROL FACIAL", 34, theme.WHITE, 155)
+        # Los niveles: el pájaro se va "calentando" de amarillo a rojo.
+        count = len(self._level_birds)
+        strip = pygame.Rect(0, 0, MENU_LEVEL_SPACING * count + 24, 62)
+        strip.center = (cx, 372)
+        self._panel(strip, radius=14)
+        self._blit_text("NIVELES", 20, theme.MUTED, center=(cx, strip.y + 12))
+        first_x = cx - MENU_LEVEL_SPACING * (count - 1) / 2
+        for i, bird in enumerate(self._level_birds):
+            x = first_x + i * MENU_LEVEL_SPACING
+            self._blit_text(str(i + 1), 22, theme.WHITE, center=(round(x) - 24, strip.y + 39))
+            bird.draw(self._screen, (x + 6, strip.y + 38))
 
-        pulse = int(160 + math.sin(pygame.time.get_ticks() / 400) * 95)
+        self._status_badges(control_name, best)
+
+        card = pygame.Rect(0, 0, 680, 140)
+        card.midbottom = (cx, self._height - 14)
+        self._panel(card)
+        pulse = int(160 + math.sin(self._menu_time * 2.5) * 95)
         self._blit_text(
-            "PRESIONA CUALQUIER TECLA",
-            38,
-            theme.WHITE,
-            alpha=pulse,
-            center=(cx, self._height - 105),
+            "PRESIONA CUALQUIER TECLA", 40, theme.WHITE, alpha=pulse, center=(cx, card.y + 32)
         )
-
-        self._text_centered(
+        self._blit_text(
             "Mueve la nariz hacia arriba y abajo para guiar al pájaro",
             26,
-            theme.WHITE,
-            self._height - 62,
-        )
-        self._text_centered(
-            f"Control: {control_name}   ·   P: pausa   ·   F11: pantalla completa   ·   ESC: salir",
-            22,
             theme.MUTED,
-            self._height - 30,
+            center=(cx, card.y + 70),
         )
+        self._key_hints(
+            (("P", "Pausa"), ("F11", "Pantalla completa"), ("ESC", "Salir")),
+            center=(cx, card.y + 108),
+        )
+
+    def _status_badges(self, control_name: str, best: int) -> None:
+        """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
+        x, y = 20, 20
+        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Récord: {best}")):
+            text = font(26).render(label, True, theme.WHITE)
+            badge = pygame.Rect(x, y, text.get_width() + 44, 34)
+            self._panel(badge, radius=17)
+            pygame.draw.circle(self._screen, dot, (badge.x + 18, badge.centery), 6)
+            self._screen.blit(text, text.get_rect(midleft=(badge.x + 32, badge.centery)))
+            y = badge.bottom + 8
+
+    def _key_hints(self, hints: tuple[tuple[str, str], ...], center: tuple[int, int]) -> None:
+        """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción."""
+        key_font, label_font = font(24), font(24)
+        parts = []
+        for key, label in hints:
+            key_text = key_font.render(key, True, theme.OUTLINE)
+            label_text = label_font.render(label, True, theme.WHITE)
+            parts.append((key_text, label_text))
+        gap, inner = 28, 8
+        total = sum(k.get_width() + 2 * inner + 8 + lbl.get_width() for k, lbl in parts)
+        total += gap * (len(parts) - 1)
+        x = center[0] - total // 2
+        for key_text, label_text in parts:
+            cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, 28)
+            cap.centery = center[1]
+            pygame.draw.rect(self._screen, theme.WHITE, cap, border_radius=6)
+            self._screen.blit(key_text, key_text.get_rect(center=cap.center))
+            label_x = cap.right + 8
+            self._screen.blit(label_text, label_text.get_rect(midleft=(label_x, center[1])))
+            x = label_x + label_text.get_width() + gap
 
     def _draw_game_over(self, score: int, best: int, new_record: bool) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
@@ -223,17 +262,34 @@ class Renderer:
 
     # ---------------------------------------------------------------- helpers
 
-    def _panel(self, rect: pygame.Rect) -> None:
+    def _panel(self, rect: pygame.Rect, radius: int = 10) -> None:
         """Rectángulo semitransparente. Dibujar con alfa exige una superficie ``SRCALPHA``."""
         surface = pygame.Surface(rect.size, pygame.SRCALPHA)
         pygame.draw.rect(
-            surface, (0, 0, 0, theme.PANEL_ALPHA), surface.get_rect(), border_radius=10
+            surface, (0, 0, 0, theme.PANEL_ALPHA), surface.get_rect(), border_radius=radius
         )
-        pygame.draw.rect(surface, (*theme.WHITE, 220), surface.get_rect(), 2, border_radius=10)
+        pygame.draw.rect(surface, (*theme.WHITE, 220), surface.get_rect(), 2, border_radius=radius)
         self._screen.blit(surface, rect.topleft)
 
     def _text_centered(self, text: str, size: int, color: theme.Color, center_y: int) -> None:
         self._blit_text(text, size, color, center=(self._width // 2, center_y))
+
+    def _outlined_text(
+        self,
+        text: str,
+        size: int,
+        color: theme.Color,
+        center: tuple[int, int],
+        thickness: int,
+    ) -> None:
+        """Texto con contorno grueso, en el mismo estilo de dibujo que el pájaro."""
+        outline = font(size).render(text, True, theme.OUTLINE)
+        rect = outline.get_rect(center=center)
+        for dx in range(-thickness, thickness + 1):
+            for dy in range(-thickness, thickness + 1):
+                if dx * dx + dy * dy <= thickness * thickness:
+                    self._screen.blit(outline, rect.move(dx, dy + 1))
+        self._screen.blit(font(size).render(text, True, color), rect)
 
     def _blit_text(
         self, text: str, size: int, color: theme.Color, *, alpha: int = 255, **position: object

@@ -56,11 +56,11 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 class BirdSprite:
     """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
-    def __init__(self, radius: float) -> None:
+    def __init__(self, radius: float, level: int = 0) -> None:
         self.radius = radius
         self.wings = WingAnimator()
         self._velocity_y = 0.0
-        self._transition = PaletteTransition(bird_palette_for_level(0), COLOR_TRANSITION_TIME)
+        self._transition = PaletteTransition(bird_palette_for_level(level), COLOR_TRANSITION_TIME)
 
     @property
     def colors(self) -> BirdPalette:
