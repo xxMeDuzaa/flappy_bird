@@ -25,7 +25,7 @@ _NOSE_X, _NOSE_Y = 8, 9
 
 
 class YuNetNoseTracker:
-    name = "OpenCV YuNet"
+    name = "YuNet"
 
     def __init__(self, model_path: Path = MODEL_PATH, score_threshold: float = 0.7) -> None:
         if not model_path.is_file():

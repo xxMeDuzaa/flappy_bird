@@ -16,7 +16,7 @@ NOSE_TIP_LANDMARK = 1
 
 
 class MediaPipeNoseTracker:
-    name = "MediaPipe Face Landmarker"
+    name = "MediaPipe"
 
     def __init__(self, model_path: Path) -> None:
         try:

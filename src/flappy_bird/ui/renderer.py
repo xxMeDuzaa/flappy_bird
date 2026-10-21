@@ -11,7 +11,7 @@ from flappy_bird.config import GameConfig
 from flappy_bird.domain import Bird, Pipe, World
 
 from . import theme
-from .assets import render_text
+from .assets import render_outlined_text, render_text
 from .background import SceneBackground
 from .bird_sprite import BirdSprite
 
@@ -27,6 +27,8 @@ MENU_BOB_SPEED = 2.1
 #: Pajaritos que muestran el color de cada nivel en el menú.
 MENU_LEVEL_BIRD_RADIUS = 10
 MENU_LEVEL_SPACING = 76
+#: Transparencia del recuadro de instrucciones del menú (más sutil que el resto).
+SUBTLE_PANEL_ALPHA = 45
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
@@ -80,7 +82,7 @@ class Renderer:
     def draw_loading(self, message: str) -> None:
         self._draw_background()
         self._screen.blit(self._dim_overlay, (0, 0))
-        self._text_centered(message, 40, theme.WHITE, self._height // 2)
+        self._text_centered(message, 4, theme.WHITE, self._height // 2)
 
     def render(
         self,
@@ -140,102 +142,100 @@ class Renderer:
     # -------------------------------------------------------------------- HUD
 
     def _draw_hud(self, score: int, best: int, world: World) -> None:
-        panel = pygame.Rect(20, 20, 190, 92)
+        score_text = render_text(4, f"Score {score}", theme.WHITE)
+        best_text = render_text(2, f"Record {best}", theme.TITLE)
+        panel = pygame.Rect(20, 20, max(score_text.get_width(), best_text.get_width()) + 32, 80)
         self._panel(panel)
-        self._screen.blit(render_text(48, f"Score: {score}", theme.WHITE), (32, 30))
-        self._screen.blit(render_text(30, f"Record: {best}", theme.YELLOW), (32, 70))
+        self._screen.blit(score_text, (panel.x + 16, panel.y + 14))
+        self._screen.blit(best_text, (panel.x + 16, panel.y + 54))
 
         level = self._config.difficulty.index(world.difficulty) + 1
-        self._blit_text(f"Nivel {level}", 26, theme.WHITE, topleft=(panel.x, panel.bottom + 8))
+        self._blit_text(f"Nivel {level}", 2, theme.WHITE, topleft=(panel.x + 4, panel.bottom + 10))
 
     def _draw_menu(self, control_name: str, best: int) -> None:
         cx = self._width // 2
 
-        self._outlined_text("FLAPPY BIRD", 92, theme.TITLE, (cx, 82), thickness=4)
-        self._outlined_text("CONTROL FACIAL", 34, theme.WHITE, (cx, 140), thickness=2)
+        self._title("FLAPPY BIRD", 8, theme.TITLE, (cx, 96))
+        subtitle = render_outlined_text(3, "EUREKAS 2026", theme.WHITE, theme.OUTLINE, 3, 0)
+        self._screen.blit(subtitle, subtitle.get_rect(center=(cx, 160)))
 
         bob = math.sin(self._menu_time * MENU_BOB_SPEED) * MENU_BOB_AMPLITUDE
-        self._menu_bird.draw(self._screen, (cx, 248 + bob))
+        self._menu_bird.draw(self._screen, (cx, 258 + bob))
 
         # Los niveles: el pájaro se va "calentando" de amarillo a rojo.
         count = len(self._level_birds)
-        strip = pygame.Rect(0, 0, MENU_LEVEL_SPACING * count + 24, 62)
+        strip = pygame.Rect(0, 0, MENU_LEVEL_SPACING * count + 24, 64)
         strip.center = (cx, 372)
         self._panel(strip, radius=14)
-        self._blit_text("NIVELES", 20, theme.MUTED, center=(cx, strip.y + 12))
+        self._blit_text("NIVELES", 2, theme.MUTED, center=(cx, strip.y + 14))
         first_x = cx - MENU_LEVEL_SPACING * (count - 1) / 2
         for i, bird in enumerate(self._level_birds):
             x = first_x + i * MENU_LEVEL_SPACING
-            self._blit_text(str(i + 1), 22, theme.WHITE, center=(round(x) - 24, strip.y + 39))
-            bird.draw(self._screen, (x + 6, strip.y + 38))
+            self._blit_text(str(i + 1), 2, theme.WHITE, center=(round(x) - 24, strip.y + 42))
+            bird.draw(self._screen, (x + 6, strip.y + 41))
 
         self._status_badges(control_name, best)
 
-        card = pygame.Rect(0, 0, 680, 140)
-        card.midbottom = (cx, self._height - 14)
-        self._panel(card)
-        pulse = int(160 + math.sin(self._menu_time * 2.5) * 95)
+        # Instrucciones: discretas, sin recuadro marcado, para no competir con el título.
+        card = pygame.Rect(0, 0, 600, 104)
+        card.midbottom = (cx, self._height - 12)
+        self._panel(card, radius=14, alpha=SUBTLE_PANEL_ALPHA, border=False)
+        pulse = int(170 + math.sin(self._menu_time * 2.5) * 85)
         self._blit_text(
-            "PRESIONA CUALQUIER TECLA", 40, theme.WHITE, alpha=pulse, center=(cx, card.y + 32)
+            "Presiona cualquier tecla", 3, theme.WHITE, alpha=pulse, center=(cx, card.y + 24)
         )
         self._blit_text(
-            "Mueve la nariz hacia arriba y abajo para guiar al pajaro",
-            26,
-            theme.MUTED,
-            center=(cx, card.y + 70),
+            "Mueve la nariz para guiar al pajaro", 2, theme.MUTED, center=(cx, card.y + 54)
         )
         self._key_hints(
             (("P", "Pausa"), ("F11", "Pantalla completa"), ("ESC", "Salir")),
-            center=(cx, card.y + 108),
+            center=(cx, card.y + 82),
         )
 
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
         x, y = 20, 20
-        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Record: {best}")):
-            text = render_text(26, label, theme.WHITE)
-            badge = pygame.Rect(x, y, text.get_width() + 44, 34)
-            self._panel(badge, radius=17)
+        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Record {best}")):
+            text = render_text(2, label, theme.WHITE)
+            badge = pygame.Rect(x, y, text.get_width() + 46, 32)
+            self._panel(badge, radius=16)
             pygame.draw.circle(self._screen, dot, (badge.x + 18, badge.centery), 6)
             self._screen.blit(text, text.get_rect(midleft=(badge.x + 32, badge.centery)))
             y = badge.bottom + 8
 
     def _key_hints(self, hints: tuple[tuple[str, str], ...], center: tuple[int, int]) -> None:
         """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción."""
-        parts = []
-        for key, label in hints:
-            key_text = render_text(24, key, theme.OUTLINE)
-            label_text = render_text(24, label, theme.WHITE)
-            parts.append((key_text, label_text))
-        gap, inner = 28, 8
-        total = sum(k.get_width() + 2 * inner + 8 + lbl.get_width() for k, lbl in parts)
+        parts = [
+            (render_text(2, key, theme.OUTLINE), render_text(2, label, theme.MUTED))
+            for key, label in hints
+        ]
+        gap, inner, after_key = 26, 6, 8
+        total = sum(k.get_width() + 2 * inner + after_key + lbl.get_width() for k, lbl in parts)
         total += gap * (len(parts) - 1)
         x = center[0] - total // 2
         for key_text, label_text in parts:
-            cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, 28)
+            cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8)
             cap.centery = center[1]
-            pygame.draw.rect(self._screen, theme.WHITE, cap, border_radius=6)
+            pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
             self._screen.blit(key_text, key_text.get_rect(center=cap.center))
-            label_x = cap.right + 8
+            label_x = cap.right + after_key
             self._screen.blit(label_text, label_text.get_rect(midleft=(label_x, center[1])))
             x = label_x + label_text.get_width() + gap
 
     def _draw_game_over(self, score: int, best: int, new_record: bool) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
         mid = self._height // 2
-        self._text_centered("GAME OVER", 84, theme.RED, mid - 110)
+        self._title("GAME OVER", 8, theme.RED, (self._width // 2, mid - 110))
         if new_record:
-            self._text_centered("NUEVO RECORD!", 42, theme.YELLOW, mid - 50)
-        self._text_centered(f"Puntaje: {score}", 40, theme.WHITE, mid + 5)
-        self._text_centered(f"Record: {best}", 40, theme.YELLOW, mid + 45)
-        self._text_centered(
-            "R o ESPACIO para reiniciar   |   ESC para salir", 30, theme.WHITE, mid + 115
-        )
+            self._text_centered("Nuevo record!", 3, theme.TITLE, mid - 40)
+        self._text_centered(f"Puntaje {score}", 4, theme.WHITE, mid + 10)
+        self._text_centered(f"Record {best}", 3, theme.TITLE, mid + 52)
+        self._text_centered("R o Espacio: reiniciar   |   ESC: salir", 2, theme.MUTED, mid + 120)
 
     def _draw_message_overlay(self, title: str, subtitle: str) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
-        self._text_centered(title, 64, theme.WHITE, self._height // 2 - 20)
-        self._text_centered(subtitle, 30, theme.MUTED, self._height // 2 + 35)
+        self._text_centered(title, 5, theme.WHITE, self._height // 2 - 24)
+        self._text_centered(subtitle, 2, theme.MUTED, self._height // 2 + 30)
 
     def _draw_preview(self, preview: PreviewFrame) -> None:
         image = pygame.image.frombuffer(preview.rgb, (preview.width, preview.height), "RGB")
@@ -261,44 +261,44 @@ class Renderer:
 
     # ---------------------------------------------------------------- helpers
 
-    def _panel(self, rect: pygame.Rect, radius: int = 10) -> None:
+    def _panel(
+        self,
+        rect: pygame.Rect,
+        radius: int = 10,
+        alpha: int = theme.PANEL_ALPHA,
+        border: bool = True,
+    ) -> None:
         """Rectángulo semitransparente. Dibujar con alfa exige una superficie ``SRCALPHA``."""
         surface = pygame.Surface(rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(
-            surface, (0, 0, 0, theme.PANEL_ALPHA), surface.get_rect(), border_radius=radius
-        )
-        pygame.draw.rect(surface, (*theme.WHITE, 220), surface.get_rect(), 2, border_radius=radius)
+        pygame.draw.rect(surface, (0, 0, 0, alpha), surface.get_rect(), border_radius=radius)
+        if border:
+            pygame.draw.rect(
+                surface, (*theme.WHITE, 220), surface.get_rect(), 2, border_radius=radius
+            )
         self._screen.blit(surface, rect.topleft)
 
-    def _text_centered(self, text: str, size: int, color: theme.Color, center_y: int) -> None:
-        self._blit_text(text, size, color, center=(self._width // 2, center_y))
+    def _text_centered(self, text: str, scale: int, color: theme.Color, center_y: int) -> None:
+        self._blit_text(text, scale, color, center=(self._width // 2, center_y))
 
-    def _outlined_text(
-        self,
-        text: str,
-        size: int,
-        color: theme.Color,
-        center: tuple[int, int],
-        thickness: int,
-    ) -> None:
-        """Texto con contorno grueso, en el mismo estilo de dibujo que el pájaro."""
-        outline = render_text(size, text, theme.OUTLINE)
-        rect = outline.get_rect(center=center)
-        for dx in range(-thickness, thickness + 1):
-            for dy in range(-thickness, thickness + 1):
-                if dx * dx + dy * dy <= thickness * thickness:
-                    self._screen.blit(outline, rect.move(dx, dy + 1))
-        self._screen.blit(render_text(size, text, color), rect)
+    def _title(self, text: str, scale: int, color: theme.Color, center: tuple[int, int]) -> None:
+        """Título grande "relleno": contorno grueso y relieve, como en los arcades."""
+        surface = render_outlined_text(
+            scale, text, color, theme.OUTLINE, thickness=scale, depth=scale
+        )
+        self._screen.blit(surface, surface.get_rect(center=center))
 
     def _blit_text(
-        self, text: str, size: int, color: theme.Color, *, alpha: int = 255, **position: object
+        self, text: str, scale: int, color: theme.Color, *, alpha: int = 255, **position: object
     ) -> None:
-        """Texto con sombra suave: se lee bien sobre cualquier zona del escenario animado."""
-        rendered = render_text(size, text, color)
-        shadow = render_text(size, text, theme.BLACK)
+        """Texto con sombra de un "píxel": se lee bien sobre el escenario animado."""
+        rendered = render_text(scale, text, color)
+        shadow = render_text(scale, text, theme.BLACK)
+        if alpha < 255:  # las superficies están cacheadas: se copian antes de modificarlas
+            rendered, shadow = rendered.copy(), shadow.copy()
+            rendered.set_alpha(alpha)
+        else:
+            shadow = shadow.copy()
+        shadow.set_alpha(alpha * 120 // 255)
         rect = rendered.get_rect(**position)
-        shadow.set_alpha(alpha * 110 // 255)
-        rendered.set_alpha(alpha)
-        offset = max(1, size // 18)
-        self._screen.blit(shadow, rect.move(offset, offset))
+        self._screen.blit(shadow, rect.move(scale, scale))
         self._screen.blit(rendered, rect)

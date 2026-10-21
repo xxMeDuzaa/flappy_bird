@@ -26,6 +26,8 @@ El pájaro sigue la altura de tu nariz en tiempo real; esquiva los tubos para su
 - **Escenario vectorial generado por código** (sin imágenes de fondo): cielo con degradé,
   sol, nubes, mar y pasto en capas con *parallax* que avanzan a la velocidad del juego. En
   cada nivel el día avanza hacia el atardecer con una transición suave de colores.
+- **Tipografía pixel art propia**, estilo arcade, dibujada por código: el juego no carga
+  imágenes ni fuentes externas.
 - **Dificultad progresiva**, récord persistente y vista previa de la cámara en pantalla.
 - **Modo mouse** para jugar o probar sin cámara.
 
