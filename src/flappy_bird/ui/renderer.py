@@ -12,12 +12,16 @@ from flappy_bird.domain import Bird, Pipe, World
 
 from . import theme
 from .assets import font, load_image
+from .background import SceneBackground
 
 #: Cuánto más grande que la hitbox se dibuja el sprite. La hitbox es un poco más
 #: chica que el dibujo a propósito: se siente más justo para el jugador.
 SPRITE_SCALE = 1.5
 MAX_TILT_DEGREES = 25.0
 TILT_PER_SPEED = 0.03  # grados por (px/s) de velocidad vertical
+
+#: Velocidad del escenario en el menú (px/s), para que no se vea estático.
+MENU_SCROLL_SPEED = 90.0
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
@@ -30,12 +34,7 @@ class Renderer:
         self._config = config
         self._width, self._height = screen.get_size()
 
-        background = load_image("background.jpg", alpha=False)
-        self._background = (
-            pygame.transform.smoothscale(background, (self._width, self._height))
-            if background is not None
-            else None
-        )
+        self._background = SceneBackground((self._width, self._height))
 
         sprite = load_image("bird.png")
         if sprite is not None:
@@ -48,6 +47,20 @@ class Renderer:
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
         self._dim_overlay.fill((0, 0, 0, 140))
+
+    # ------------------------------------------------------------- animación
+
+    def update(self, dt: float, session: GameSession) -> None:
+        """Avanza las animaciones del escenario según el estado de la partida."""
+        if session.state is GameState.MENU:
+            level, speed = 0, MENU_SCROLL_SPEED
+        else:
+            difficulty = session.world.difficulty
+            level = self._config.difficulty.index(difficulty)
+            moving = session.state is GameState.PLAYING and not session.waiting_for_player
+            speed = difficulty.speed if moving else 0.0
+        self._background.set_level(level)
+        self._background.update(dt, speed)
 
     # --------------------------------------------------------------- pantallas
 
@@ -85,10 +98,7 @@ class Renderer:
     # ------------------------------------------------------------------ mundo
 
     def _draw_background(self) -> None:
-        if self._background is not None:
-            self._screen.blit(self._background, (0, 0))
-        else:
-            self._screen.fill(theme.SKY)
+        self._background.draw(self._screen)
 
     def _draw_world(self, world: World) -> None:
         for pipe in world.pipes:
@@ -139,8 +149,7 @@ class Renderer:
         self._screen.blit(font(30).render(f"Récord: {best}", True, theme.YELLOW), (32, 70))
 
         level = self._config.difficulty.index(world.difficulty) + 1
-        label = font(26).render(f"Nivel {level}", True, theme.MUTED)
-        self._screen.blit(label, (panel.x, panel.bottom + 8))
+        self._blit_text(f"Nivel {level}", 26, theme.WHITE, topleft=(panel.x, panel.bottom + 8))
 
     def _draw_menu(self, control_name: str) -> None:
         cx = self._width // 2
@@ -149,7 +158,7 @@ class Renderer:
         for i in range(3):  # halo detrás del pájaro
             radius = 100 - i * 20
             halo = pygame.Surface((radius * 2, radius * 2), pygame.SRCALPHA)
-            pygame.draw.circle(halo, (*theme.VIOLET, 90 - i * 25), (radius, radius), radius)
+            pygame.draw.circle(halo, (*theme.VIOLET, 70 - i * 20), (radius, radius), radius)
             self._screen.blit(halo, (cx - radius, cy - radius))
 
         if self._menu_sprite is not None:
@@ -168,9 +177,13 @@ class Renderer:
         self._text_centered("CONTROL FACIAL", 34, theme.WHITE, 155)
 
         pulse = int(160 + math.sin(pygame.time.get_ticks() / 400) * 95)
-        prompt = font(38).render("PRESIONA CUALQUIER TECLA", True, theme.WHITE)
-        prompt.set_alpha(pulse)
-        self._screen.blit(prompt, prompt.get_rect(center=(cx, self._height - 105)))
+        self._blit_text(
+            "PRESIONA CUALQUIER TECLA",
+            38,
+            theme.WHITE,
+            alpha=pulse,
+            center=(cx, self._height - 105),
+        )
 
         self._text_centered(
             "Mueve la nariz hacia arriba y abajo para guiar al pájaro",
@@ -236,5 +249,17 @@ class Renderer:
         self._screen.blit(surface, rect.topleft)
 
     def _text_centered(self, text: str, size: int, color: theme.Color, center_y: int) -> None:
+        self._blit_text(text, size, color, center=(self._width // 2, center_y))
+
+    def _blit_text(
+        self, text: str, size: int, color: theme.Color, *, alpha: int = 255, **position: object
+    ) -> None:
+        """Texto con sombra suave: se lee bien sobre cualquier zona del escenario animado."""
         rendered = font(size).render(text, True, color)
-        self._screen.blit(rendered, rendered.get_rect(center=(self._width // 2, center_y)))
+        shadow = font(size).render(text, True, theme.BLACK)
+        rect = rendered.get_rect(**position)
+        shadow.set_alpha(alpha * 110 // 255)
+        rendered.set_alpha(alpha)
+        offset = max(1, size // 18)
+        self._screen.blit(shadow, rect.move(offset, offset))
+        self._screen.blit(rendered, rect)

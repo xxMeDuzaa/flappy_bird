@@ -4,7 +4,6 @@ from typing import Final
 
 Color = tuple[int, int, int]
 
-SKY: Final[Color] = (135, 206, 235)
 WHITE: Final[Color] = (255, 255, 255)
 BLACK: Final[Color] = (0, 0, 0)
 YELLOW: Final[Color] = (255, 221, 51)

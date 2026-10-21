@@ -14,7 +14,7 @@ ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
 IMAGES_DIR = ASSETS_DIR / "images"
 
 
-def load_image(name: str, *, alpha: bool = True) -> pygame.Surface | None:
+def load_image(name: str) -> pygame.Surface | None:
     """Carga ``assets/images/<name>``; devuelve ``None`` (y lo registra) si falla."""
     path = IMAGES_DIR / name
     try:
@@ -22,7 +22,7 @@ def load_image(name: str, *, alpha: bool = True) -> pygame.Surface | None:
     except (FileNotFoundError, pygame.error) as error:
         logger.warning("No se pudo cargar %s (%s); se usa un dibujo de respaldo", path, error)
         return None
-    return image.convert_alpha() if alpha else image.convert()
+    return image.convert_alpha()
 
 
 @lru_cache(maxsize=16)

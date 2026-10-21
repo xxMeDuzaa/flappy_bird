@@ -42,6 +42,7 @@ class GameApp:
                 for event in pygame.event.get():
                     self._handle_event(event)
                 self._session.tick(dt, self._control.read())
+                self._renderer.update(dt, self._session)
                 preview = self._preview.latest_preview() if self._preview else None
                 self._renderer.render(self._session, self._control.name, preview)
                 pygame.display.flip()

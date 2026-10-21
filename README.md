@@ -20,6 +20,9 @@ El pájaro sigue la altura de tu nariz en tiempo real; esquiva los tubos para su
   usa tiempo real (`dt`), así la velocidad no depende de los FPS de la webcam.
 - **Hitbox justa**: colisión círculo-rectángulo acorde al dibujo del pájaro.
 - **Pausa automática** si se pierde el rostro o la ventana pierde el foco.
+- **Escenario vectorial generado por código** (sin imágenes de fondo): cielo con degradé,
+  sol, nubes, mar y pasto en capas con *parallax* que avanzan a la velocidad del juego. En
+  cada nivel el día avanza hacia el atardecer con una transición suave de colores.
 - **Dificultad progresiva**, récord persistente y vista previa de la cámara en pantalla.
 - **Modo mouse** para jugar o probar sin cámara.
 
@@ -110,8 +113,8 @@ flappy_bird/
 │   │   ├── tracking/           # MediaPipe, YuNet, filtro One Euro, descarga de modelo
 │   │   ├── storage/            # récord en JSON
 │   │   └── face_control.py     # cámara + detector en un hilo de fondo
-│   ├── ui/                     # app (loop), renderer, assets, theme, mouse_control
-│   └── assets/                 # imágenes y modelo YuNet
+│   ├── ui/                     # app (loop), renderer, background, palette, mouse_control...
+│   └── assets/                 # sprite del pájaro y modelo YuNet
 ├── tests/                      # tests unitarios (pytest)
 ├── tools/camera_debug.py       # diagnóstico de cámara y detector
 └── .github/workflows/ci.yml    # lint + tipos + tests en cada push
@@ -122,6 +125,8 @@ flappy_bird/
 Todo lo ajustable está en [`src/flappy_bird/config.py`](src/flappy_bird/config.py):
 niveles de dificultad (hueco, velocidad en px/s, distancia entre tubos), tamaño de la
 hitbox, suavizado del pájaro, rango de calibración de la nariz y parámetros del filtro.
+Los colores del escenario de cada nivel están en
+[`src/flappy_bird/ui/palette.py`](src/flappy_bird/ui/palette.py).
 
 ## 🧪 Desarrollo
 
