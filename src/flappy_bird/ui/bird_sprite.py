@@ -138,14 +138,14 @@ class BirdSprite:
         gap = max(0.0, -self.wings.intent) * 0.12 * r
         top = [
             (cx + 0.8 * r, cy - 0.14 * r),
-            (cx + 2.15 * r, cy + 0.06 * r),
-            (cx + 2.1 * r, cy + 0.36 * r),
+            (cx + 1.85 * r, cy + 0.04 * r),
+            (cx + 1.8 * r, cy + 0.36 * r),
             (cx + 0.85 * r, cy + 0.36 * r),
         ]
         bottom = [
             (cx + 0.85 * r, cy + 0.36 * r + gap),
-            (cx + 1.95 * r, cy + 0.4 * r + gap),
-            (cx + 1.85 * r, cy + 0.72 * r + gap),
+            (cx + 1.7 * r, cy + 0.4 * r + gap),
+            (cx + 1.6 * r, cy + 0.72 * r + gap),
             (cx + 0.9 * r, cy + 0.74 * r + gap),
         ]
         self._poly(canvas, BEAK_BOTTOM, bottom, line)
@@ -154,7 +154,7 @@ class BirdSprite:
     def _draw_wing(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         shoulder = (cx - 0.05 * r, cy + 0.12 * r)
         # Ala grande en reposo: un óvalo que sale del hombro hacia atrás.
-        shape = _ellipse_points(shoulder[0] - 0.85 * r, shoulder[1], 1.05 * r, 0.55 * r)
+        shape = _ellipse_points(shoulder[0] - 0.6 * r, shoulder[1], 1.0 * r, 0.52 * r)
         # Se gira en sentido inverso: ángulo positivo levanta la punta (que está atrás).
         wing = _rotate(shape, shoulder, -self.wings.angle)
         pygame.draw.polygon(canvas, self.colors.wing, wing)
