@@ -17,7 +17,7 @@ from dataclasses import dataclass
 
 import pygame
 
-from .palette import DAY, ScenePalette, lerp_color, palette_for_level
+from .palette import DAY, PaletteTransition, ScenePalette, lerp_color, palette_for_level
 
 #: Fracciones del alto de pantalla donde empiezan el mar y el pasto.
 HORIZON_RATIO = 0.70
@@ -31,8 +31,8 @@ GROUND_FACTOR = 1.0  # el pasto acompaña a los tubos
 
 #: Viento: las nubes se mueven un poco aunque el juego esté quieto (px/s).
 WIND_SPEED = 6.0
-#: Constante de tiempo (s) de la transición de colores entre niveles.
-PALETTE_TRANSITION_TIME = 0.9
+#: Duración (s) de la transición de colores entre niveles.
+PALETTE_TRANSITION_TIME = 2.0
 
 #: Durante una transición, cada cuánto (s) se regeneran las superficies. Los colores
 #: cambian lento, así que 12 veces por segundo se ve fluido y cuesta mucho menos.
@@ -73,8 +73,7 @@ class SceneBackground:
         self._ground_y = round(self._height * GROUND_RATIO)
         rng = rng or random.Random(2024)
 
-        self._palette = DAY
-        self._target = DAY
+        self._transition = PaletteTransition(DAY, PALETTE_TRANSITION_TIME)
         self._dirty = True
         self._scroll = 0.0
         self._time = 0.0
@@ -104,21 +103,22 @@ class SceneBackground:
 
     def set_level(self, level_index: int) -> None:
         """Cambia la paleta objetivo; la transición ocurre gradualmente en :meth:`update`."""
-        self._target = palette_for_level(level_index)
+        self._transition.retarget(palette_for_level(level_index))
 
     def update(self, dt: float, speed: float) -> None:
         """Avanza las animaciones. ``speed`` es la velocidad actual de los tubos (px/s)."""
         self._time += dt
         self._scroll += speed * dt
 
-        if self._palette != self._target:
-            t = 1.0 - math.exp(-dt / PALETTE_TRANSITION_TIME)
-            blended = self._palette.blend(self._target, t)
-            self._palette = self._target if blended.distance(self._target) < 1 else blended
+        if self._transition.update(dt):
             self._dirty = True
 
+    @property
+    def _palette(self) -> ScenePalette:
+        return self._transition.current
+
     def draw(self, surface: pygame.Surface) -> None:
-        transition_done = self._palette == self._target
+        transition_done = self._transition.done
         if self._dirty and (transition_done or self._time - self._last_rebuild >= REBUILD_INTERVAL):
             self._rebuild()
             self._dirty = False

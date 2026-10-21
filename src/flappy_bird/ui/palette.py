@@ -8,6 +8,7 @@ rojo. Las transiciones entre paletas son graduales.
 from __future__ import annotations
 
 from dataclasses import dataclass, fields
+from typing import Generic, Protocol, Self, TypeVar
 
 Color = tuple[int, int, int]
 
@@ -47,6 +48,63 @@ def _max_difference(a: object, b: object) -> float:
         else:
             diff = max(diff, *(abs(p - q) for p, q in zip(x, y, strict=True)))
     return diff
+
+
+class Blendable(Protocol):
+    def blend(self, other: Self, t: float) -> Self: ...
+
+
+P = TypeVar("P", bound=Blendable)
+
+
+def smoothstep(t: float) -> float:
+    t = min(max(t, 0.0), 1.0)
+    return t * t * (3 - 2 * t)
+
+
+class PaletteTransition(Generic[P]):
+    """Transición suave entre paletas.
+
+    Siempre interpola desde la paleta de *origen* con un progreso acumulado. Si en
+    cambio se mezclara la paleta actual con el destino un poquito en cada frame,
+    al redondear los colores a enteros los pasos chicos darían cero y la
+    transición quedaría trabada a mitad de camino.
+    """
+
+    def __init__(self, initial: P, duration: float) -> None:
+        if duration <= 0:
+            raise ValueError("duration debe ser positiva")
+        self._duration = duration
+        self._from = initial
+        self._to = initial
+        self._current = initial
+        self._progress = 1.0
+
+    @property
+    def current(self) -> P:
+        return self._current
+
+    @property
+    def done(self) -> bool:
+        return self._progress >= 1.0
+
+    def retarget(self, target: P) -> None:
+        """Empieza a ir hacia ``target`` desde el color actual (si no es ya el destino)."""
+        if target == self._to:
+            return
+        self._from = self._current
+        self._to = target
+        self._progress = 0.0
+
+    def update(self, dt: float) -> bool:
+        """Avanza la transición. Devuelve ``True`` si los colores cambiaron."""
+        if self.done or dt <= 0:
+            return False
+        self._progress = min(1.0, self._progress + dt / self._duration)
+        self._current = (
+            self._to if self.done else self._from.blend(self._to, smoothstep(self._progress))
+        )
+        return True
 
 
 @dataclass(frozen=True, slots=True)
@@ -178,23 +236,23 @@ class BirdPalette:
 #: apagada (poco brillo), para que no compita con el cuerpo.
 LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
     BirdPalette(
-        body=(255, 236, 120),
-        body_shade=(240, 204, 80),
-        belly=(255, 248, 200),
+        body=(255, 242, 150),
+        body_shade=(242, 212, 96),
+        belly=(255, 251, 218),
         wing=(255, 255, 255),
         wing_shade=(215, 215, 215),
     ),
     BirdPalette(
-        body=(255, 210, 70),
-        body_shade=(232, 175, 50),
-        belly=(255, 236, 165),
-        wing=(248, 232, 205),
-        wing_shade=(212, 190, 160),
+        body=(250, 192, 40),
+        body_shade=(220, 152, 28),
+        belly=(250, 208, 92),
+        wing=(242, 210, 148),
+        wing_shade=(200, 160, 96),
     ),
     BirdPalette(
-        body=(250, 165, 50),
-        body_shade=(220, 128, 38),
-        belly=(255, 210, 140),
+        body=(244, 146, 40),
+        body_shade=(208, 110, 30),
+        belly=(252, 196, 125),
         wing=(242, 188, 112),
         wing_shade=(204, 146, 80),
     ),

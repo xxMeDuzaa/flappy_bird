@@ -51,3 +51,39 @@ def test_bird_palettes_get_darker_and_redder() -> None:
     wr, wg, wb = last.wing
     assert wr > wg > wb  # ala anaranjada
     assert bird_palette_for_level(99) == last
+
+
+def test_transition_reaches_target_exactly() -> None:
+    from flappy_bird.ui.palette import LEVEL_BIRD_PALETTES, PaletteTransition
+
+    transition = PaletteTransition(LEVEL_BIRD_PALETTES[0], duration=1.0)
+    transition.retarget(LEVEL_BIRD_PALETTES[1])
+    for _ in range(120):  # 2 s a 60 FPS: pasos muy chicos en cada frame
+        transition.update(1 / 60)
+    assert transition.done
+    assert transition.current == LEVEL_BIRD_PALETTES[1]
+
+
+def test_transition_does_not_stall_on_small_steps() -> None:
+    from flappy_bird.ui.palette import LEVEL_BIRD_PALETTES, PaletteTransition
+
+    start, end = LEVEL_BIRD_PALETTES[0], LEVEL_BIRD_PALETTES[1]
+    transition = PaletteTransition(start, duration=1.0)
+    transition.retarget(end)
+    for _ in range(45):  # 75 % del tiempo
+        transition.update(1 / 60)
+    halfway = start.distance(end) / 2
+    assert transition.current.distance(end) < halfway
+
+
+def test_retarget_mid_transition_starts_from_current_colors() -> None:
+    from flappy_bird.ui.palette import LEVEL_BIRD_PALETTES, PaletteTransition
+
+    transition = PaletteTransition(LEVEL_BIRD_PALETTES[0], duration=1.0)
+    transition.retarget(LEVEL_BIRD_PALETTES[4])
+    transition.update(0.5)
+    mid = transition.current
+    transition.retarget(LEVEL_BIRD_PALETTES[0])
+    transition.update(1e-6)
+    assert transition.current.distance(mid) <= 1
+    assert not transition.update(0) and not transition.done

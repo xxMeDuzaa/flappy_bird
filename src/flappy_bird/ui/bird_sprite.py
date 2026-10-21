@@ -15,13 +15,13 @@ import math
 import pygame
 
 from .bird_animation import WingAnimator
-from .palette import BirdPalette, bird_palette_for_level
+from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
 SUPERSAMPLE = 2
-#: Constante de tiempo (s) del cambio de color entre niveles.
-COLOR_TRANSITION_TIME = 0.9
+#: Duración (s) del cambio de color entre niveles.
+COLOR_TRANSITION_TIME = 1.5
 
 # Colores fijos (no cambian con el nivel).
 OUTLINE = (45, 32, 22)
@@ -60,25 +60,20 @@ class BirdSprite:
         self.radius = radius
         self.wings = WingAnimator()
         self._velocity_y = 0.0
-        self._colors = bird_palette_for_level(0)
-        self._target_colors = self._colors
+        self._transition = PaletteTransition(bird_palette_for_level(0), COLOR_TRANSITION_TIME)
 
     @property
     def colors(self) -> BirdPalette:
-        return self._colors
+        return self._transition.current
 
     def set_level(self, level_index: int) -> None:
         """Fija los colores objetivo del nivel; el cambio se hace gradual en :meth:`update`."""
-        self._target_colors = bird_palette_for_level(level_index)
+        self._transition.retarget(bird_palette_for_level(level_index))
 
     def update(self, dt: float, velocity_y: float) -> None:
         self._velocity_y = velocity_y
         self.wings.update(dt, velocity_y)
-        if self._colors != self._target_colors and dt > 0:
-            t = 1.0 - math.exp(-dt / COLOR_TRANSITION_TIME)
-            blended = self._colors.blend(self._target_colors, t)
-            done = blended.distance(self._target_colors) < 1
-            self._colors = self._target_colors if done else blended
+        self._transition.update(dt)
 
     def draw(self, target: pygame.Surface, center: Point, tilt: float = 0.0) -> None:
         image = self._render()
@@ -119,7 +114,7 @@ class BirdSprite:
         end_top = (cx - 1.92 * r, cy - 0.62 * r)
         end_bottom = (cx - 2.16 * r, cy + 0.2 * r)
         self._poly(
-            canvas, self._colors.body_shade, [neck_top, end_top, end_bottom, neck_bottom], line
+            canvas, self.colors.body_shade, [neck_top, end_top, end_bottom, neck_bottom], line
         )
 
         # Plumas: líneas que salen de la mitad de la cola y llegan al borde final.
@@ -139,10 +134,10 @@ class BirdSprite:
     def _draw_body(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         body = pygame.Rect(0, 0, round(BODY_WIDTH * r), round(BODY_HEIGHT * r))
         body.center = (round(cx), round(cy))
-        pygame.draw.ellipse(canvas, self._colors.body, body)
+        pygame.draw.ellipse(canvas, self.colors.body, body)
         belly = pygame.Rect(0, 0, round(1.85 * r), round(1.15 * r))
         belly.center = (round(cx + 0.12 * r), round(cy + 0.5 * r))
-        pygame.draw.ellipse(canvas, self._colors.belly, belly)
+        pygame.draw.ellipse(canvas, self.colors.belly, belly)
         pygame.draw.ellipse(canvas, OUTLINE, body, line)
 
     def _draw_eye(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
@@ -178,7 +173,7 @@ class BirdSprite:
         shape = _ellipse_points(shoulder[0] - 0.58 * r, shoulder[1], 0.66 * r, 0.34 * r)
         # Se gira en sentido inverso: ángulo positivo levanta la punta (que está atrás).
         wing = _rotate(shape, shoulder, -self.wings.angle)
-        pygame.draw.polygon(canvas, self._colors.wing, wing)
+        pygame.draw.polygon(canvas, self.colors.wing, wing)
         # Plumas: líneas cortas en la mitad trasera del ala.
         feathers = _rotate(
             [
@@ -189,5 +184,5 @@ class BirdSprite:
             shoulder,
             -self.wings.angle,
         )
-        pygame.draw.lines(canvas, self._colors.wing_shade, False, feathers, line)
+        pygame.draw.lines(canvas, self.colors.wing_shade, False, feathers, line)
         pygame.draw.polygon(canvas, OUTLINE, wing, line)
