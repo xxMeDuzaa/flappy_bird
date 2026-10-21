@@ -236,9 +236,9 @@ class BirdPalette:
 #: apagada (poco brillo), para que no compita con el cuerpo.
 LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
     BirdPalette(
-        body=(255, 242, 150),
-        body_shade=(242, 212, 96),
-        belly=(255, 251, 218),
+        body=(255, 234, 92),
+        body_shade=(236, 198, 52),
+        belly=(255, 247, 190),
         wing=(255, 255, 255),
         wing_shade=(215, 215, 215),
     ),
