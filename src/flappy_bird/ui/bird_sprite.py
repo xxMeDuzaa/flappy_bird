@@ -1,7 +1,7 @@
 """El pájaro, dibujado por código con estilo pixel art (sin imágenes).
 
 Las formas (cuerpo, ala, pico...) se dibujan en una grilla chica, sin suavizado
-y con contorno de 1 píxel, y después se agrandan con vecino más cercano: cada
+y con contorno de 2 píxeles, y después se agrandan con vecino más cercano: cada
 "píxel" del sprite se ve como un bloque cuadrado, como en las consolas clásicas.
 La animación del ala y los colores por nivel siguen funcionando igual.
 
@@ -20,6 +20,10 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
+#: Grosor del contorno de la silueta (cuerpo, cola, ala), en píxeles del sprite.
+OUTLINE_PIXELS = 2
+#: Grosor del contorno de los detalles (ojo, pico, plumas).
+DETAIL_OUTLINE_PIXELS = 1
 #: Inclinación en pasos fijos: los sprites retro rotaban de a "cuadros", no en continuo.
 TILT_STEP_DEGREES = 7.5
 #: Duración (s) del cambio de color entre niveles.
@@ -58,7 +62,7 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 class BirdSprite:
     """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
-    def __init__(self, radius: float, level: int = 0, pixel_size: int = 3) -> None:
+    def __init__(self, radius: float, level: int = 0, pixel_size: int = 2) -> None:
         """``pixel_size``: cuántos píxeles de pantalla mide cada píxel del sprite."""
         self.radius = radius
         self.pixel_size = max(1, pixel_size)
@@ -96,12 +100,14 @@ class BirdSprite:
         width, height = round(r * 4.8), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
-        line = 1  # contorno de un píxel, como en el pixel art
+        line = OUTLINE_PIXELS
 
         self._draw_tail(canvas, cx, cy, r, line)
         self._draw_body(canvas, cx, cy, r, line)
-        self._draw_eye(canvas, cx, cy, r, line)
-        self._draw_beak(canvas, cx, cy, r, line)
+        # Los detalles chicos (ojo y pico) llevan contorno fino para no quedar "tapados".
+        detail = DETAIL_OUTLINE_PIXELS
+        self._draw_eye(canvas, cx, cy, r, detail)
+        self._draw_beak(canvas, cx, cy, r, detail)
         self._draw_wing(canvas, cx, cy, r, line)
 
         return canvas
@@ -126,7 +132,7 @@ class BirdSprite:
 
         # Plumas: líneas que salen de la mitad de la cola y llegan al borde final.
         neck_mid = ((neck_top[0] + neck_bottom[0]) / 2, (neck_top[1] + neck_bottom[1]) / 2)
-        feather_line = max(1, line * 2 // 3)
+        feather_line = DETAIL_OUTLINE_PIXELS
         for t in (0.25, 0.5, 0.75):
             edge = (
                 end_top[0] + (end_bottom[0] - end_top[0]) * t,
@@ -191,5 +197,5 @@ class BirdSprite:
             shoulder,
             -self.wings.angle,
         )
-        pygame.draw.lines(canvas, self.colors.wing_shade, False, feathers, line)
+        pygame.draw.lines(canvas, self.colors.wing_shade, False, feathers, DETAIL_OUTLINE_PIXELS)
         pygame.draw.polygon(canvas, OUTLINE, wing, line)
