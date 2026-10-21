@@ -24,9 +24,8 @@ MENU_SCROLL_SPEED = 90.0
 MENU_BIRD_SCALE = 2.2
 MENU_BOB_AMPLITUDE = 10.0
 MENU_BOB_SPEED = 2.1
-#: Pajaritos que muestran el color de cada nivel en el menú.
-MENU_LEVEL_BIRD_RADIUS = 10
-MENU_LEVEL_SPACING = 76
+#: Invitación a jugar del menú: aparece y desaparece en ciclos de este período (s).
+START_PROMPT_PERIOD = 2.2
 #: Medidas de las "píldoras" (récord, cámara, instrucciones, teclas).
 PILL_HEIGHT = 32
 PILL_MARGIN = 20  # distancia de las píldoras a los bordes de la pantalla
@@ -57,11 +56,6 @@ class Renderer:
         self._bird_sprite = BirdSprite(config.bird.radius)
         self._menu_bird = BirdSprite(config.bird.radius * MENU_BIRD_SCALE)
         self._menu_time = 0.0
-        self._level_birds = [
-            # Son muy chicos para pixelarlos: se dibujan suaves.
-            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i, pixel_size=1)
-            for i in range(len(config.difficulty))
-        ]
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
         self._dim_overlay.fill((0, 0, 0, 140))
@@ -77,8 +71,6 @@ class Renderer:
                 MENU_BOB_AMPLITUDE * MENU_BOB_SPEED * math.cos(self._menu_time * MENU_BOB_SPEED)
             )
             self._menu_bird.update(dt, bob_velocity)
-            for bird in self._level_birds:
-                bird.update(dt, 0.0)
         else:
             difficulty = session.world.difficulty
             level = self._config.difficulty.index(difficulty)
@@ -184,22 +176,25 @@ class Renderer:
         bob = math.sin(self._menu_time * MENU_BOB_SPEED) * MENU_BOB_AMPLITUDE
         self._menu_bird.draw(self._screen, (cx, 258 + bob))
 
-        # Los niveles: el pájaro se va "calentando" de amarillo a rojo.
-        count = len(self._level_birds)
-        strip = pygame.Rect(0, 0, MENU_LEVEL_SPACING * count + 24, 64)
-        strip.center = (cx, 372)
-        self._panel(strip, radius=14, border=False)
-        self._blit_text("NIVELES", 2, theme.MUTED, center=(cx, strip.y + 14))
-        first_x = cx - MENU_LEVEL_SPACING * (count - 1) / 2
-        for i, bird in enumerate(self._level_birds):
-            x = first_x + i * MENU_LEVEL_SPACING
-            self._blit_text(str(i + 1), 2, theme.WHITE, center=(round(x) - 24, strip.y + 42))
-            bird.draw(self._screen, (x + 6, strip.y + 41))
+        self._start_prompt(center=(cx, 380))
 
         self._status_badges(control_name, best)
 
         # Abajo y centradas: sólo las teclas.
         self._key_hints(MENU_KEYS, center=(cx, self._height - PILL_MARGIN - PILL_HEIGHT // 2))
+
+    def _start_prompt(self, center: tuple[int, int]) -> None:
+        """ "Apreta una tecla para empezar": aparece y desaparece suavemente, en bucle."""
+        phase = (self._menu_time % START_PROMPT_PERIOD) / START_PROMPT_PERIOD
+        # Curva suave de 0 a 1 y de vuelta a 0 (un "respiro" en vez de un parpadeo seco).
+        alpha = round(255 * (0.5 - 0.5 * math.cos(math.tau * phase)))
+        if alpha < 8:
+            return
+        text = render_outlined_text(
+            3, "Apreta una tecla para empezar", theme.WHITE, theme.OUTLINE, 3, 0
+        ).copy()  # cacheada: se copia antes de cambiarle la transparencia
+        text.set_alpha(alpha)
+        self._screen.blit(text, text.get_rect(center=center))
 
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""

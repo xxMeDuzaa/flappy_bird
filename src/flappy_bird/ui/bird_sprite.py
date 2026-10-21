@@ -6,7 +6,7 @@ primitivas de pygame no tengan antialiasing en figuras rellenas.
 
 Para un toque retro suave, ese dibujo se hace a la mitad del tamaño final y se
 agranda con vecino más cercano: cada píxel ocupa un bloque de 2x2 en pantalla
-(``pixel_size``), sin perder el suavizado de los bordes.
+(``PIXEL_SIZE``), sin perder el suavizado de los bordes.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -24,6 +24,8 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 Point = tuple[float, float]
 
 SUPERSAMPLE = 2
+#: Lado (px de pantalla) de cada píxel del dibujo: 2 = pixelado leve, 1 = sin pixelar.
+PIXEL_SIZE = 2
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -60,13 +62,11 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 class BirdSprite:
     """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
-    def __init__(self, radius: float, level: int = 0, pixel_size: int = 2) -> None:
-        """``pixel_size``: lado (px de pantalla) de cada píxel del dibujo; 1 = sin pixelar."""
+    def __init__(self, radius: float) -> None:
         self.radius = radius
-        self.pixel_size = max(1, pixel_size)
         self.wings = WingAnimator()
         self._velocity_y = 0.0
-        self._transition = PaletteTransition(bird_palette_for_level(level), COLOR_TRANSITION_TIME)
+        self._transition = PaletteTransition(bird_palette_for_level(0), COLOR_TRANSITION_TIME)
 
     @property
     def colors(self) -> BirdPalette:
@@ -85,8 +85,8 @@ class BirdSprite:
         image = self._render()
         if abs(tilt) > 0.5:
             image = pygame.transform.rotozoom(image, tilt, 1.0)
-        if self.pixel_size > 1:
-            p = self.pixel_size
+        if PIXEL_SIZE > 1:
+            p = PIXEL_SIZE
             image = pygame.transform.scale(image, (image.get_width() * p, image.get_height() * p))
         target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
@@ -94,7 +94,7 @@ class BirdSprite:
 
     def _render(self) -> pygame.Surface:
         k = SUPERSAMPLE
-        r = self.radius * k / self.pixel_size
+        r = self.radius * k / PIXEL_SIZE
         width, height = round(r * 4.4), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
