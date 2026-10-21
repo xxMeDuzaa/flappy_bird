@@ -28,10 +28,6 @@ class Bird:
         self.velocity_y = 0.0
         self._target_y = y
 
-    @property
-    def target_y(self) -> float:
-        return self._target_y
-
     def steer_to(self, target_y: float) -> None:
         """Fija la altura a la que el pájaro debe dirigirse (se limita a la pantalla)."""
         self._target_y = min(max(target_y, self.min_y), self.max_y)

@@ -8,7 +8,6 @@ from flappy_bird.config import DifficultyLevel, GameConfig
 
 from .bird import Bird
 from .difficulty import level_for_score
-from .events import WorldEvent
 from .pipe import Pipe
 
 
@@ -33,22 +32,21 @@ class World:
         self.pipes: list[Pipe] = []
         self.score = 0
         self.crashed = False
-        self.elapsed = 0.0
 
     @property
     def difficulty(self) -> DifficultyLevel:
         return level_for_score(self.score, self._config.difficulty)
 
-    def update(self, dt: float, target_y: float | None) -> list[WorldEvent]:
+    def update(self, dt: float, target_y: float | None) -> None:
         """Avanza la simulación ``dt`` segundos.
 
         ``target_y`` es la altura (px) a la que el jugador quiere llevar al pájaro;
-        ``None`` mantiene el último objetivo conocido.
+        ``None`` mantiene el último objetivo conocido. Si el pájaro choca, ``crashed``
+        pasa a ``True`` y el mundo deja de avanzar.
         """
         if self.crashed or dt <= 0:
-            return []
+            return
 
-        self.elapsed += dt
         if target_y is not None:
             self.bird.steer_to(target_y)
         self.bird.update(dt)
@@ -58,20 +56,15 @@ class World:
         for pipe in self.pipes:
             pipe.move(-level.speed * dt)
 
-        events: list[WorldEvent] = []
         for pipe in self.pipes:
             if not pipe.scored and pipe.is_passed_by(self.bird.x):
                 pipe.scored = True
                 self.score += 1
-                events.append(WorldEvent.SCORED)
 
         self.pipes = [pipe for pipe in self.pipes if not pipe.is_off_screen()]
 
         hitbox = self.bird.hitbox
-        if any(pipe.collides_with(hitbox) for pipe in self.pipes):
-            self.crashed = True
-            events.append(WorldEvent.CRASHED)
-        return events
+        self.crashed = any(pipe.collides_with(hitbox) for pipe in self.pipes)
 
     # ------------------------------------------------------------------ internos
 

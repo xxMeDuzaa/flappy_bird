@@ -3,7 +3,7 @@ from __future__ import annotations
 from itertools import pairwise
 
 from flappy_bird.config import GameConfig
-from flappy_bird.domain import Pipe, World, WorldEvent
+from flappy_bird.domain import Pipe, World
 
 DT = 1 / 60
 
@@ -12,14 +12,12 @@ def gap_center(pipe: Pipe) -> float:
     return pipe.gap_top + pipe.gap_size / 2
 
 
-def run_following_gaps(world: World, seconds: float) -> list[WorldEvent]:
+def run_following_gaps(world: World, seconds: float) -> None:
     """Simula un jugador perfecto que siempre apunta al centro del próximo hueco."""
-    events: list[WorldEvent] = []
     for _ in range(round(seconds / DT)):
         upcoming = [p for p in world.pipes if p.right + world.bird.radius > world.bird.x]
         target = gap_center(upcoming[0]) if upcoming else None
-        events += world.update(DT, target)
-    return events
+        world.update(DT, target)
 
 
 def test_first_pipe_spawns_at_right_edge(world: World) -> None:
@@ -48,10 +46,9 @@ def test_gaps_stay_inside_screen_margins(world: World, config: GameConfig) -> No
 
 
 def test_perfect_player_scores_and_survives(world: World) -> None:
-    events = run_following_gaps(world, 20)
-    assert WorldEvent.CRASHED not in events
+    run_following_gaps(world, 20)
+    assert not world.crashed
     assert world.score > 5
-    assert events.count(WorldEvent.SCORED) == world.score
 
 
 def test_each_pipe_scores_only_once(world: World) -> None:
@@ -60,19 +57,26 @@ def test_each_pipe_scores_only_once(world: World) -> None:
 
 
 def test_idle_player_eventually_crashes(world: World) -> None:
-    events: list[WorldEvent] = []
     for _ in range(60 * 60):
-        events += world.update(DT, 0)  # pegado al techo
+        world.update(DT, 0)  # pegado al techo
         if world.crashed:
             break
     assert world.crashed
-    assert events[-1] is WorldEvent.CRASHED
 
 
 def test_crashed_world_does_not_advance(world: World) -> None:
     world.crashed = True
     world.update(DT, None)
     assert world.pipes == []
+
+
+def test_score_counts_each_passed_pipe(world: World) -> None:
+    passed: list[Pipe] = []  # se guardan los objetos (no ids) para que no se reutilicen
+    for _ in range(60 * 15):
+        upcoming = [p for p in world.pipes if p.right + world.bird.radius > world.bird.x]
+        world.update(DT, gap_center(upcoming[0]) if upcoming else None)
+        passed += [p for p in world.pipes if p.scored and all(p is not q for q in passed)]
+    assert world.score == len(passed) > 0
 
 
 def test_speed_increases_with_score(world: World, config: GameConfig) -> None:

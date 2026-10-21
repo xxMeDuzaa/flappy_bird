@@ -37,19 +37,6 @@ def _blend_fields(a: object, b: object, t: float) -> dict[str, Color | float]:
     return values
 
 
-def _max_difference(a: object, b: object) -> float:
-    """Diferencia máxima entre canales; sirve para saber si una transición terminó."""
-    diff = 0.0
-    for field in fields(a):  # type: ignore[arg-type]
-        x = getattr(a, field.name)
-        y = getattr(b, field.name)
-        if isinstance(x, float):
-            diff = max(diff, abs(x - y) * 255)
-        else:
-            diff = max(diff, *(abs(p - q) for p, q in zip(x, y, strict=True)))
-    return diff
-
-
 class Blendable(Protocol):
     def blend(self, other: Self, t: float) -> Self: ...
 
@@ -125,9 +112,6 @@ class ScenePalette:
 
     def blend(self, other: ScenePalette, t: float) -> ScenePalette:
         return ScenePalette(**_blend_fields(self, other, t))  # type: ignore[arg-type]
-
-    def distance(self, other: ScenePalette) -> float:
-        return _max_difference(self, other)
 
 
 DAY = ScenePalette(
@@ -227,9 +211,6 @@ class BirdPalette:
 
     def blend(self, other: BirdPalette, t: float) -> BirdPalette:
         return BirdPalette(**_blend_fields(self, other, t))  # type: ignore[arg-type]
-
-    def distance(self, other: BirdPalette) -> float:
-        return _max_difference(self, other)
 
 
 #: Nivel 1: amarillo claro con ala blanca. Nivel 5: rojo con ala naranja intensa pero

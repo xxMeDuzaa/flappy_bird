@@ -36,10 +36,11 @@ def test_movement_is_independent_of_frame_rate() -> None:
 
 def test_target_is_clamped_to_screen() -> None:
     bird = make_bird()
-    bird.steer_to(-1000)
-    assert bird.target_y == 20
-    bird.steer_to(10_000)
-    assert bird.target_y == 580
+    for target, limit in ((-1000, 20), (10_000, 580)):
+        bird.steer_to(target)
+        for _ in range(120):
+            bird.update(1 / 60)
+        assert bird.y == pytest.approx(limit, abs=0.5)
 
 
 def test_invalid_response_time() -> None:

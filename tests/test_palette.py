@@ -19,11 +19,7 @@ def test_blend_midpoint_is_between() -> None:
     assert (
         min(DAY.sun_height, DUSK.sun_height) < mid.sun_height < max(DAY.sun_height, DUSK.sun_height)
     )
-    assert 0 < mid.distance(DAY) < DAY.distance(DUSK)
-
-
-def test_distance_is_zero_for_same_palette() -> None:
-    assert DAY.distance(DAY) == 0
+    assert mid not in (DAY, DUSK)
 
 
 @pytest.mark.parametrize(("level", "expected"), [(-1, 0), (0, 0), (2, 2), (99, -1)])
@@ -72,8 +68,13 @@ def test_transition_does_not_stall_on_small_steps() -> None:
     transition.retarget(end)
     for _ in range(45):  # 75 % del tiempo
         transition.update(1 / 60)
-    halfway = start.distance(end) / 2
-    assert transition.current.distance(end) < halfway
+    # Con el bug anterior los colores se trababan cerca del origen: acá deben
+    # estar más cerca del destino que del origen en cada canal que cambia.
+    for field in ("body", "belly", "wing"):
+        now, a, b = (getattr(x, field) for x in (transition.current, start, end))
+        for channel, (c_now, c_a, c_b) in enumerate(zip(now, a, b, strict=True)):
+            if c_a != c_b:
+                assert abs(c_now - c_b) < abs(c_now - c_a), (field, channel)
 
 
 def test_retarget_mid_transition_starts_from_current_colors() -> None:
@@ -85,5 +86,9 @@ def test_retarget_mid_transition_starts_from_current_colors() -> None:
     mid = transition.current
     transition.retarget(LEVEL_BIRD_PALETTES[0])
     transition.update(1e-6)
-    assert transition.current.distance(mid) <= 1
+    assert all(
+        abs(x - y) <= 1
+        for field in ("body", "belly", "wing")
+        for x, y in zip(getattr(transition.current, field), getattr(mid, field), strict=True)
+    )
     assert not transition.update(0) and not transition.done

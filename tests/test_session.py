@@ -13,6 +13,11 @@ DT = 1 / 60
 CENTER = ControlReading(position=0.5)
 
 
+def snapshot(world: World) -> tuple[float, list[float]]:
+    """Estado observable del mundo: si no cambia, el mundo no avanzó."""
+    return world.bird.y, [p.x for p in world.pipes]
+
+
 def make_session(
     config: GameConfig, best: int = 0
 ) -> tuple[GameSession, InMemoryHighScoreRepository]:
@@ -25,7 +30,7 @@ def test_starts_in_menu_and_ignores_ticks(config: GameConfig) -> None:
     session, _ = make_session(config)
     session.tick(1.0, CENTER)
     assert session.state is GameState.MENU
-    assert session.world.elapsed == 0
+    assert session.world.pipes == []
 
 
 def test_start_begins_playing(config: GameConfig) -> None:
@@ -33,7 +38,7 @@ def test_start_begins_playing(config: GameConfig) -> None:
     session.start()
     session.tick(DT, CENTER)
     assert session.state is GameState.PLAYING
-    assert session.world.elapsed > 0
+    assert session.world.pipes
 
 
 def test_pause_freezes_world(config: GameConfig) -> None:
@@ -42,7 +47,7 @@ def test_pause_freezes_world(config: GameConfig) -> None:
     session.toggle_pause()
     session.tick(1.0, CENTER)
     assert session.state is GameState.PAUSED
-    assert session.world.elapsed == 0
+    assert session.world.pipes == []
     session.toggle_pause()
     assert session.state is GameState.PLAYING
 
@@ -52,13 +57,13 @@ def test_losing_the_face_freezes_after_grace_period(config: GameConfig) -> None:
     session.start()
     session.tick(config.face_lost_grace / 2, NO_SIGNAL)
     assert not session.waiting_for_player
-    advanced = session.world.elapsed
-    assert advanced > 0
+    assert session.world.pipes  # durante el margen de gracia el mundo sigue
+    frozen = snapshot(session.world)
 
     session.tick(config.face_lost_grace, NO_SIGNAL)
     assert session.waiting_for_player
     session.tick(1.0, NO_SIGNAL)
-    assert session.world.elapsed == advanced
+    assert snapshot(session.world) == frozen
 
     session.tick(DT, CENTER)
     assert not session.waiting_for_player
@@ -67,10 +72,11 @@ def test_losing_the_face_freezes_after_grace_period(config: GameConfig) -> None:
 def test_position_is_mapped_to_screen(config: GameConfig) -> None:
     session, _ = make_session(config)
     session.start()
-    session.tick(DT, ControlReading(position=0.0))
-    assert session.world.bird.target_y == config.bird.radius
-    session.tick(DT, ControlReading(position=1.0))
-    assert session.world.bird.target_y == config.screen.height - config.bird.radius
+    radius, height = config.bird.radius, config.screen.height
+    for position, expected_y in ((0.0, radius), (1.0, height - radius)):
+        for _ in range(30):  # medio segundo: alcanza para llegar, antes del primer tubo
+            session.tick(DT, ControlReading(position=position))
+        assert abs(session.world.bird.y - expected_y) < 1
 
 
 def crash(session: GameSession) -> None:

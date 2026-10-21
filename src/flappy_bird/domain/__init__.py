@@ -6,9 +6,8 @@ se puede testear de forma aislada y reutilizar con cualquier interfaz.
 
 from .bird import Bird
 from .difficulty import level_for_score
-from .events import WorldEvent
 from .geometry import Circle, Rect
 from .pipe import Pipe
 from .world import World
 
-__all__ = ["Bird", "Circle", "Pipe", "Rect", "World", "WorldEvent", "level_for_score"]
+__all__ = ["Bird", "Circle", "Pipe", "Rect", "World", "level_for_score"]

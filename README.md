@@ -109,7 +109,7 @@ flappy_bird/
 ├── src/flappy_bird/
 │   ├── __main__.py             # punto de entrada y CLI
 │   ├── config.py               # todas las constantes del juego
-│   ├── domain/                 # bird, pipe, world, geometry, difficulty, events
+│   ├── domain/                 # bird, pipe, world, geometry, difficulty
 │   ├── application/            # session, scoring, ports
 │   ├── infrastructure/
 │   │   ├── camera/             # envoltorio de cv2.VideoCapture

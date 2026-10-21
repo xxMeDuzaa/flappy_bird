@@ -6,7 +6,7 @@ from collections.abc import Callable
 from enum import Enum, auto
 
 from flappy_bird.config import GameConfig
-from flappy_bird.domain import World, WorldEvent
+from flappy_bird.domain import World
 
 from .ports import ControlReading
 from .scoring import ScoreBoard
@@ -84,8 +84,8 @@ class GameSession:
             self._time_without_signal = 0.0
             target_y = self._to_screen_y(reading.position)
 
-        events = self.world.update(dt, target_y)
-        if WorldEvent.CRASHED in events:
+        self.world.update(dt, target_y)
+        if self.world.crashed:
             self.state = GameState.GAME_OVER
             self.new_record = self._scoreboard.submit(self.world.score)
 
