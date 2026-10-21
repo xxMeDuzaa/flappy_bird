@@ -20,7 +20,7 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
-#: Grosor del contorno de la silueta (cuerpo, cola, ala), en píxeles del sprite.
+#: Grosor del contorno de la silueta (cuerpo y ala), en píxeles del sprite.
 OUTLINE_PIXELS = 2
 #: Grosor del contorno de los detalles (ojo, pico, plumas).
 DETAIL_OUTLINE_PIXELS = 1
@@ -97,12 +97,11 @@ class BirdSprite:
 
     def _render(self) -> pygame.Surface:
         r = self.radius / self.pixel_size  # radio en "píxeles" del sprite
-        width, height = round(r * 4.8), round(r * 4.2)
+        width, height = round(r * 4.4), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
         line = OUTLINE_PIXELS
 
-        self._draw_tail(canvas, cx, cy, r, line)
         self._draw_body(canvas, cx, cy, r, line)
         # Los detalles chicos (ojo y pico) llevan contorno fino para no quedar "tapados".
         detail = DETAIL_OUTLINE_PIXELS
@@ -118,31 +117,6 @@ class BirdSprite:
     ) -> None:
         pygame.draw.polygon(canvas, color, points)
         pygame.draw.polygon(canvas, OUTLINE, points, line)
-
-    def _draw_tail(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        # Cola en abanico: se une al cuerpo con una base ancha (acompaña su curva) y se
-        # abre un poco más hacia la punta, con el borde final recto e inclinado.
-        neck_top = (cx - 1.0 * r, cy - 0.26 * r)
-        neck_bottom = (cx - 0.95 * r, cy + 0.36 * r)
-        end_top = (cx - 1.92 * r, cy - 0.62 * r)
-        end_bottom = (cx - 2.16 * r, cy + 0.2 * r)
-        self._poly(
-            canvas, self.colors.body_shade, [neck_top, end_top, end_bottom, neck_bottom], line
-        )
-
-        # Plumas: líneas que salen de la mitad de la cola y llegan al borde final.
-        neck_mid = ((neck_top[0] + neck_bottom[0]) / 2, (neck_top[1] + neck_bottom[1]) / 2)
-        feather_line = DETAIL_OUTLINE_PIXELS
-        for t in (0.25, 0.5, 0.75):
-            edge = (
-                end_top[0] + (end_bottom[0] - end_top[0]) * t,
-                end_top[1] + (end_bottom[1] - end_top[1]) * t,
-            )
-            start = (
-                neck_mid[0] + (edge[0] - neck_mid[0]) * 0.45,
-                neck_mid[1] + (edge[1] - neck_mid[1]) * 0.45,
-            )
-            pygame.draw.line(canvas, OUTLINE, start, edge, feather_line)
 
     def _draw_body(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         body = pygame.Rect(0, 0, round(BODY_WIDTH * r), round(BODY_HEIGHT * r))

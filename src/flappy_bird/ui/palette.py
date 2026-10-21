@@ -204,7 +204,6 @@ def palette_for_level(level_index: int) -> ScenePalette:
 @dataclass(frozen=True, slots=True)
 class BirdPalette:
     body: Color
-    body_shade: Color  # cola y sombra
     belly: Color
     wing: Color
     wing_shade: Color  # plumas del ala
@@ -218,35 +217,30 @@ class BirdPalette:
 LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
     BirdPalette(
         body=(255, 234, 92),
-        body_shade=(236, 198, 52),
         belly=(255, 247, 190),
         wing=(255, 255, 255),
         wing_shade=(215, 215, 215),
     ),
     BirdPalette(
         body=(250, 192, 40),
-        body_shade=(220, 152, 28),
         belly=(250, 208, 92),
         wing=(242, 210, 148),
         wing_shade=(200, 160, 96),
     ),
     BirdPalette(
         body=(244, 146, 40),
-        body_shade=(208, 110, 30),
         belly=(252, 196, 125),
         wing=(242, 188, 112),
         wing_shade=(204, 146, 80),
     ),
     BirdPalette(
         body=(222, 68, 40),
-        body_shade=(176, 44, 30),
         belly=(236, 118, 84),
         wing=(226, 124, 44),
         wing_shade=(176, 86, 30),
     ),
     BirdPalette(
         body=(176, 28, 34),
-        body_shade=(124, 18, 24),
         belly=(204, 70, 64),
         wing=(204, 96, 30),
         wing_shade=(150, 64, 20),
