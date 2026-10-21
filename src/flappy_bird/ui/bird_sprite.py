@@ -1,8 +1,9 @@
-"""El pájaro dibujado con formas vectoriales (sin imágenes).
+"""El pájaro, dibujado por código con estilo pixel art (sin imágenes).
 
-Se dibuja en una superficie pequeña al doble de resolución y se reduce con
-``smoothscale`` (*supersampling*): así los bordes quedan suavizados aunque las
-primitivas de pygame no tengan antialiasing en figuras rellenas.
+Las formas (cuerpo, ala, pico...) se dibujan en una grilla chica, sin suavizado
+y con contorno de 1 píxel, y después se agrandan con vecino más cercano: cada
+"píxel" del sprite se ve como un bloque cuadrado, como en las consolas clásicas.
+La animación del ala y los colores por nivel siguen funcionando igual.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -19,7 +20,8 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
-SUPERSAMPLE = 2
+#: Inclinación en pasos fijos: los sprites retro rotaban de a "cuadros", no en continuo.
+TILT_STEP_DEGREES = 7.5
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -56,8 +58,10 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 class BirdSprite:
     """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
-    def __init__(self, radius: float, level: int = 0) -> None:
+    def __init__(self, radius: float, level: int = 0, pixel_size: int = 3) -> None:
+        """``pixel_size``: cuántos píxeles de pantalla mide cada píxel del sprite."""
         self.radius = radius
+        self.pixel_size = max(1, pixel_size)
         self.wings = WingAnimator()
         self._velocity_y = 0.0
         self._transition = PaletteTransition(bird_palette_for_level(level), COLOR_TRANSITION_TIME)
@@ -76,20 +80,23 @@ class BirdSprite:
         self._transition.update(dt)
 
     def draw(self, target: pygame.Surface, center: Point, tilt: float = 0.0) -> None:
-        image = self._render()
-        if abs(tilt) > 0.5:
-            image = pygame.transform.rotozoom(image, tilt, 1.0)
+        sprite = self._render()
+        step = round(tilt / TILT_STEP_DEGREES) * TILT_STEP_DEGREES
+        if step:
+            # Se rota la grilla chica (sin suavizado) para que los bordes sigan pixelados.
+            sprite = pygame.transform.rotate(sprite, step)
+        size = (sprite.get_width() * self.pixel_size, sprite.get_height() * self.pixel_size)
+        image = pygame.transform.scale(sprite, size)
         target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
     # ------------------------------------------------------------------ dibujo
 
     def _render(self) -> pygame.Surface:
-        k = SUPERSAMPLE
-        r = self.radius * k
+        r = self.radius / self.pixel_size  # radio en "píxeles" del sprite
         width, height = round(r * 4.8), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
-        line = max(2, round(r * 0.09))
+        line = 1  # contorno de un píxel, como en el pixel art
 
         self._draw_tail(canvas, cx, cy, r, line)
         self._draw_body(canvas, cx, cy, r, line)
@@ -97,7 +104,7 @@ class BirdSprite:
         self._draw_beak(canvas, cx, cy, r, line)
         self._draw_wing(canvas, cx, cy, r, line)
 
-        return pygame.transform.smoothscale(canvas, (width // k, height // k))
+        return canvas
 
     @staticmethod
     def _poly(
@@ -147,7 +154,7 @@ class BirdSprite:
         # La pupila mira hacia donde va el pájaro.
         look = max(-1.0, min(1.0, self._velocity_y / 600))
         pupil = (eye[0] + 0.17 * r, eye[1] + 0.16 * r * look)
-        pygame.draw.circle(canvas, PUPIL, pupil, 0.17 * r)
+        pygame.draw.circle(canvas, PUPIL, pupil, max(1.0, 0.17 * r))
 
     def _draw_beak(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         # Boca más abierta mientras sube con esfuerzo.
