@@ -39,8 +39,8 @@ BEAK_TOP = (255, 120, 40)
 BEAK_BOTTOM = (225, 80, 35)
 
 # Proporciones del cuerpo, en múltiplos del radio de la hitbox.
-BODY_WIDTH = 3.1
-BODY_HEIGHT = 2.1  # cuerpo alargado; apenas más alto que la hitbox
+BODY_WIDTH = 3.2
+BODY_HEIGHT = 2.35  # óvalo: más largo que alto, algo más alto que la hitbox
 
 
 def _ellipse_points(cx: float, cy: float, rx: float, ry: float, n: int = 20) -> list[Point]:
@@ -98,7 +98,7 @@ class BirdSprite:
     def _render(self) -> pygame.Surface:
         k = SUPERSAMPLE
         r = self.radius * k / self._pixel_size
-        width, height = round(r * 4.9), round(r * 4.0)
+        width, height = round(r * 5.0), round(r * 4.3)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
         line = max(3, round(r * 0.12))
@@ -122,13 +122,13 @@ class BirdSprite:
         body = pygame.Rect(0, 0, round(BODY_WIDTH * r), round(BODY_HEIGHT * r))
         body.center = (round(cx), round(cy))
         pygame.draw.ellipse(canvas, self.colors.body, body)
-        belly = pygame.Rect(0, 0, round(2.3 * r), round(1.0 * r))
-        belly.center = (round(cx + 0.15 * r), round(cy + 0.45 * r))
+        belly = pygame.Rect(0, 0, round(2.4 * r), round(1.15 * r))
+        belly.center = (round(cx + 0.15 * r), round(cy + 0.52 * r))
         pygame.draw.ellipse(canvas, self.colors.belly, belly)
         pygame.draw.ellipse(canvas, OUTLINE, body, line)
 
     def _draw_eye(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        eye = (cx + 0.78 * r, cy - 0.38 * r)
+        eye = (cx + 0.8 * r, cy - 0.45 * r)
         pygame.draw.circle(canvas, EYE_WHITE, eye, 0.46 * r)
         pygame.draw.circle(canvas, OUTLINE, eye, 0.46 * r, line)
         # La pupila mira hacia donde va el pájaro.
