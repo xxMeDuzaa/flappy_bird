@@ -20,6 +20,8 @@ El pájaro sigue la altura de tu nariz en tiempo real; esquiva los tubos para su
   usa tiempo real (`dt`), así la velocidad no depende de los FPS de la webcam.
 - **Hitbox justa**: colisión círculo-rectángulo acorde al dibujo del pájaro.
 - **Pausa automática** si se pierde el rostro o la ventana pierde el foco.
+- **Pájaro vectorial animado**: dibujado con código (sin sprites). Aletea rápido al subir,
+  tranquilo cuando se mantiene y planea con las alas levantadas al bajar; mira hacia donde va.
 - **Escenario vectorial generado por código** (sin imágenes de fondo): cielo con degradé,
   sol, nubes, mar y pasto en capas con *parallax* que avanzan a la velocidad del juego. En
   cada nivel el día avanza hacia el atardecer con una transición suave de colores.
@@ -113,8 +115,8 @@ flappy_bird/
 │   │   ├── tracking/           # MediaPipe, YuNet, filtro One Euro, descarga de modelo
 │   │   ├── storage/            # récord en JSON
 │   │   └── face_control.py     # cámara + detector en un hilo de fondo
-│   ├── ui/                     # app (loop), renderer, background, palette, mouse_control...
-│   └── assets/                 # sprite del pájaro y modelo YuNet
+│   ├── ui/                     # app (loop), renderer, background, bird_sprite, palette...
+│   └── assets/models/          # modelo YuNet (el juego no usa imágenes)
 ├── tests/                      # tests unitarios (pytest)
 ├── tools/camera_debug.py       # diagnóstico de cámara y detector
 └── .github/workflows/ci.yml    # lint + tipos + tests en cada push

@@ -1,28 +1,14 @@
-"""Carga de imágenes y fuentes con cache y valores de respaldo."""
+"""Recursos de la interfaz: fuentes con cache.
+
+El pájaro y el escenario se dibujan con código (ver ``bird_sprite.py`` y
+``background.py``), así que el juego no carga imágenes.
+"""
 
 from __future__ import annotations
 
-import logging
 from functools import lru_cache
-from pathlib import Path
 
 import pygame
-
-logger = logging.getLogger(__name__)
-
-ASSETS_DIR = Path(__file__).resolve().parent.parent / "assets"
-IMAGES_DIR = ASSETS_DIR / "images"
-
-
-def load_image(name: str) -> pygame.Surface | None:
-    """Carga ``assets/images/<name>``; devuelve ``None`` (y lo registra) si falla."""
-    path = IMAGES_DIR / name
-    try:
-        image = pygame.image.load(path)
-    except (FileNotFoundError, pygame.error) as error:
-        logger.warning("No se pudo cargar %s (%s); se usa un dibujo de respaldo", path, error)
-        return None
-    return image.convert_alpha()
 
 
 @lru_cache(maxsize=16)

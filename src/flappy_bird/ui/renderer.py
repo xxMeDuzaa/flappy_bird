@@ -11,17 +11,19 @@ from flappy_bird.config import GameConfig
 from flappy_bird.domain import Bird, Pipe, World
 
 from . import theme
-from .assets import font, load_image
+from .assets import font
 from .background import SceneBackground
+from .bird_sprite import BirdSprite
 
-#: Cuánto más grande que la hitbox se dibuja el sprite. La hitbox es un poco más
-#: chica que el dibujo a propósito: se siente más justo para el jugador.
-SPRITE_SCALE = 1.5
 MAX_TILT_DEGREES = 25.0
 TILT_PER_SPEED = 0.03  # grados por (px/s) de velocidad vertical
 
 #: Velocidad del escenario en el menú (px/s), para que no se vea estático.
 MENU_SCROLL_SPEED = 90.0
+#: Pájaro del menú: tamaño relativo y vaivén vertical (px, rad/s).
+MENU_BIRD_SCALE = 2.2
+MENU_BOB_AMPLITUDE = 10.0
+MENU_BOB_SPEED = 2.1
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
@@ -36,14 +38,9 @@ class Renderer:
 
         self._background = SceneBackground((self._width, self._height))
 
-        sprite = load_image("bird.png")
-        if sprite is not None:
-            target_w = round(config.bird.radius * 2 * SPRITE_SCALE)
-            target_h = round(sprite.get_height() * target_w / sprite.get_width())
-            # ``scale`` (vecino más cercano) mantiene nítido el pixel art.
-            sprite = pygame.transform.scale(sprite, (target_w, target_h))
-        self._bird_sprite = sprite
-        self._menu_sprite = pygame.transform.scale_by(sprite, 2) if sprite is not None else None
+        self._bird_sprite = BirdSprite(config.bird.radius)
+        self._menu_bird = BirdSprite(config.bird.radius * MENU_BIRD_SCALE)
+        self._menu_time = 0.0
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
         self._dim_overlay.fill((0, 0, 0, 140))
@@ -51,14 +48,21 @@ class Renderer:
     # ------------------------------------------------------------- animación
 
     def update(self, dt: float, session: GameSession) -> None:
-        """Avanza las animaciones del escenario según el estado de la partida."""
+        """Avanza las animaciones (escenario y alas) según el estado de la partida."""
         if session.state is GameState.MENU:
             level, speed = 0, MENU_SCROLL_SPEED
+            self._menu_time += dt
+            bob_velocity = (
+                MENU_BOB_AMPLITUDE * MENU_BOB_SPEED * math.cos(self._menu_time * MENU_BOB_SPEED)
+            )
+            self._menu_bird.update(dt, bob_velocity)
         else:
             difficulty = session.world.difficulty
             level = self._config.difficulty.index(difficulty)
             moving = session.state is GameState.PLAYING and not session.waiting_for_player
             speed = difficulty.speed if moving else 0.0
+            if moving:  # en pausa o game over las alas se quedan quietas
+                self._bird_sprite.update(dt, session.world.bird.velocity_y)
         self._background.set_level(level)
         self._background.update(dt, speed)
 
@@ -106,24 +110,8 @@ class Renderer:
         self._draw_bird(world.bird)
 
     def _draw_bird(self, bird: Bird) -> None:
-        if self._bird_sprite is None:
-            self._draw_fallback_bird(bird.x, bird.y, bird.radius)
-            return
         tilt = max(-MAX_TILT_DEGREES, min(MAX_TILT_DEGREES, -bird.velocity_y * TILT_PER_SPEED))
-        sprite = (
-            pygame.transform.rotate(self._bird_sprite, tilt)
-            if abs(tilt) > 0.5
-            else self._bird_sprite
-        )
-        self._screen.blit(sprite, sprite.get_rect(center=(round(bird.x), round(bird.y))))
-
-    def _draw_fallback_bird(self, x: float, y: float, radius: float) -> None:
-        cx, cy, r = round(x), round(y), round(radius)
-        pygame.draw.circle(self._screen, theme.YELLOW, (cx, cy), r)
-        pygame.draw.circle(self._screen, theme.BLACK, (cx, cy), r, 2)
-        pygame.draw.circle(self._screen, theme.BLACK, (cx + r // 2, cy - r // 3), max(3, r // 5))
-        beak = [(cx + r, cy), (cx + r + r // 2, cy), (cx + r, cy + r // 4)]
-        pygame.draw.polygon(self._screen, theme.ORANGE, beak)
+        self._bird_sprite.draw(self._screen, (bird.x, bird.y), tilt)
 
     def _draw_pipe(self, pipe: Pipe) -> None:
         top, bottom = pipe.top_rect, pipe.bottom_rect
@@ -161,13 +149,8 @@ class Renderer:
             pygame.draw.circle(halo, (*theme.VIOLET, 70 - i * 20), (radius, radius), radius)
             self._screen.blit(halo, (cx - radius, cy - radius))
 
-        if self._menu_sprite is not None:
-            bob = math.sin(pygame.time.get_ticks() / 300) * 8
-            self._screen.blit(
-                self._menu_sprite, self._menu_sprite.get_rect(center=(cx, round(cy + bob)))
-            )
-        else:
-            self._draw_fallback_bird(cx, cy, 40)
+        bob = math.sin(self._menu_time * MENU_BOB_SPEED) * MENU_BOB_AMPLITUDE
+        self._menu_bird.draw(self._screen, (cx, cy + bob))
 
         title = font(84)
         shadow = title.render("FLAPPY BIRD", True, theme.YELLOW_SHADOW)
