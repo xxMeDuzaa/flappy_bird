@@ -1,7 +1,8 @@
-"""Paletas del escenario y utilidades de color (sin dependencias de pygame).
+"""Paletas del escenario y del pájaro, y utilidades de color (sin dependencias de pygame).
 
 Cada nivel de dificultad tiene su propia paleta: a medida que el jugador avanza,
-el día cae hacia el atardecer y el escenario transiciona suavemente entre ellas.
+el día cae hacia el atardecer y el pájaro se va "calentando" de amarillo claro a
+rojo. Las transiciones entre paletas son graduales.
 """
 
 from __future__ import annotations
@@ -24,6 +25,30 @@ def lerp_color(a: Color, b: Color, t: float) -> Color:
     )
 
 
+def _blend_fields(a: object, b: object, t: float) -> dict[str, Color | float]:
+    """Interpola campo por campo dos dataclasses del mismo tipo (``t`` en ``[0, 1]``)."""
+    t = min(max(t, 0.0), 1.0)
+    values: dict[str, Color | float] = {}
+    for field in fields(a):  # type: ignore[arg-type]
+        x = getattr(a, field.name)
+        y = getattr(b, field.name)
+        values[field.name] = lerp(x, y, t) if isinstance(x, float) else lerp_color(x, y, t)
+    return values
+
+
+def _max_difference(a: object, b: object) -> float:
+    """Diferencia máxima entre canales; sirve para saber si una transición terminó."""
+    diff = 0.0
+    for field in fields(a):  # type: ignore[arg-type]
+        x = getattr(a, field.name)
+        y = getattr(b, field.name)
+        if isinstance(x, float):
+            diff = max(diff, abs(x - y) * 255)
+        else:
+            diff = max(diff, *(abs(p - q) for p, q in zip(x, y, strict=True)))
+    return diff
+
+
 @dataclass(frozen=True, slots=True)
 class ScenePalette:
     sky_top: Color
@@ -41,26 +66,10 @@ class ScenePalette:
     ground: Color
 
     def blend(self, other: ScenePalette, t: float) -> ScenePalette:
-        """Interpola campo por campo entre dos paletas (``t`` en ``[0, 1]``)."""
-        t = min(max(t, 0.0), 1.0)
-        values: dict[str, Color | float] = {}
-        for field in fields(self):
-            a = getattr(self, field.name)
-            b = getattr(other, field.name)
-            values[field.name] = lerp(a, b, t) if isinstance(a, float) else lerp_color(a, b, t)
-        return ScenePalette(**values)  # type: ignore[arg-type]
+        return ScenePalette(**_blend_fields(self, other, t))  # type: ignore[arg-type]
 
     def distance(self, other: ScenePalette) -> float:
-        """Diferencia máxima entre canales; sirve para saber si una transición terminó."""
-        diff = 0.0
-        for field in fields(self):
-            a = getattr(self, field.name)
-            b = getattr(other, field.name)
-            if isinstance(a, float):
-                diff = max(diff, abs(a - b) * 255)
-            else:
-                diff = max(diff, *(abs(x - y) for x, y in zip(a, b, strict=True)))
-        return diff
+        return _max_difference(self, other)
 
 
 DAY = ScenePalette(
@@ -145,3 +154,67 @@ def palette_for_level(level_index: int) -> ScenePalette:
     """Paleta del nivel (0 = primero). Niveles extra reutilizan la última."""
     index = min(max(level_index, 0), len(LEVEL_PALETTES) - 1)
     return LEVEL_PALETTES[index]
+
+
+# --------------------------------------------------------------------- pájaro
+
+
+@dataclass(frozen=True, slots=True)
+class BirdPalette:
+    body: Color
+    body_shade: Color  # cola y sombra
+    belly: Color
+    wing: Color
+    wing_shade: Color  # plumas del ala
+
+    def blend(self, other: BirdPalette, t: float) -> BirdPalette:
+        return BirdPalette(**_blend_fields(self, other, t))  # type: ignore[arg-type]
+
+    def distance(self, other: BirdPalette) -> float:
+        return _max_difference(self, other)
+
+
+#: Nivel 1: amarillo claro con ala blanca. Nivel 5: rojo con ala naranja intensa pero
+#: apagada (poco brillo), para que no compita con el cuerpo.
+LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
+    BirdPalette(
+        body=(255, 236, 120),
+        body_shade=(240, 204, 80),
+        belly=(255, 248, 200),
+        wing=(255, 255, 255),
+        wing_shade=(215, 215, 215),
+    ),
+    BirdPalette(
+        body=(255, 210, 70),
+        body_shade=(232, 175, 50),
+        belly=(255, 236, 165),
+        wing=(248, 232, 205),
+        wing_shade=(212, 190, 160),
+    ),
+    BirdPalette(
+        body=(250, 165, 50),
+        body_shade=(220, 128, 38),
+        belly=(255, 210, 140),
+        wing=(242, 188, 112),
+        wing_shade=(204, 146, 80),
+    ),
+    BirdPalette(
+        body=(232, 102, 45),
+        body_shade=(196, 72, 36),
+        belly=(244, 150, 100),
+        wing=(230, 140, 58),
+        wing_shade=(186, 100, 40),
+    ),
+    BirdPalette(
+        body=(196, 40, 38),
+        body_shade=(150, 28, 30),
+        belly=(218, 92, 74),
+        wing=(214, 104, 32),
+        wing_shade=(160, 72, 24),
+    ),
+)
+
+
+def bird_palette_for_level(level_index: int) -> BirdPalette:
+    index = min(max(level_index, 0), len(LEVEL_BIRD_PALETTES) - 1)
+    return LEVEL_BIRD_PALETTES[index]

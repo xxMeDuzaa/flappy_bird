@@ -22,6 +22,7 @@ El pájaro sigue la altura de tu nariz en tiempo real; esquiva los tubos para su
 - **Pausa automática** si se pierde el rostro o la ventana pierde el foco.
 - **Pájaro vectorial animado**: dibujado con código (sin sprites). Aletea rápido al subir,
   tranquilo cuando se mantiene y planea con las alas levantadas al bajar; mira hacia donde va.
+  Con cada nivel se va oscureciendo de amarillo claro a rojo, y el ala de blanco a naranja.
 - **Escenario vectorial generado por código** (sin imágenes de fondo): cielo con degradé,
   sol, nubes, mar y pasto en capas con *parallax* que avanzan a la velocidad del juego. En
   cada nivel el día avanza hacia el atardecer con una transición suave de colores.

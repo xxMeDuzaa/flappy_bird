@@ -61,7 +61,8 @@ class Renderer:
             level = self._config.difficulty.index(difficulty)
             moving = session.state is GameState.PLAYING and not session.waiting_for_player
             speed = difficulty.speed if moving else 0.0
-            if moving:  # en pausa o game over las alas se quedan quietas
+            self._bird_sprite.set_level(level)  # el pájaro se "calienta" con la dificultad
+            if moving:  # en pausa o game over las alas (y el color) se quedan quietos
                 self._bird_sprite.update(dt, session.world.bird.velocity_y)
         self._background.set_level(level)
         self._background.update(dt, speed)

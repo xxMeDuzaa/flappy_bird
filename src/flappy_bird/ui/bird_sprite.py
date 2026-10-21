@@ -3,6 +3,9 @@
 Se dibuja en una superficie pequeña al doble de resolución y se reduce con
 ``smoothscale`` (*supersampling*): así los bordes quedan suavizados aunque las
 primitivas de pygame no tengan antialiasing en figuras rellenas.
+
+Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
+cambian gradualmente cuando sube la dificultad.
 """
 
 from __future__ import annotations
@@ -12,21 +15,24 @@ import math
 import pygame
 
 from .bird_animation import WingAnimator
+from .palette import BirdPalette, bird_palette_for_level
 
 Point = tuple[float, float]
 
 SUPERSAMPLE = 2
+#: Constante de tiempo (s) del cambio de color entre niveles.
+COLOR_TRANSITION_TIME = 0.9
 
+# Colores fijos (no cambian con el nivel).
 OUTLINE = (45, 32, 22)
-BODY = (255, 208, 48)
-BODY_SHADE = (240, 170, 30)
-BELLY = (255, 238, 150)
-WING = (255, 250, 235)
-WING_SHADE = (225, 215, 200)
 EYE_WHITE = (255, 255, 255)
 PUPIL = (20, 20, 20)
 BEAK_TOP = (255, 120, 40)
 BEAK_BOTTOM = (225, 80, 35)
+
+# Proporciones del cuerpo, en múltiplos del radio de la hitbox.
+BODY_WIDTH = 2.55
+BODY_HEIGHT = 2.25  # más alto que la hitbox: un pájaro gordito, colisión algo indulgente
 
 
 def _ellipse_points(cx: float, cy: float, rx: float, ry: float, n: int = 20) -> list[Point]:
@@ -48,16 +54,31 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 
 
 class BirdSprite:
-    """Pájaro animado. ``radius`` es el radio de la hitbox (= mitad del alto del cuerpo)."""
+    """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
     def __init__(self, radius: float) -> None:
         self.radius = radius
         self.wings = WingAnimator()
         self._velocity_y = 0.0
+        self._colors = bird_palette_for_level(0)
+        self._target_colors = self._colors
+
+    @property
+    def colors(self) -> BirdPalette:
+        return self._colors
+
+    def set_level(self, level_index: int) -> None:
+        """Fija los colores objetivo del nivel; el cambio se hace gradual en :meth:`update`."""
+        self._target_colors = bird_palette_for_level(level_index)
 
     def update(self, dt: float, velocity_y: float) -> None:
         self._velocity_y = velocity_y
         self.wings.update(dt, velocity_y)
+        if self._colors != self._target_colors and dt > 0:
+            t = 1.0 - math.exp(-dt / COLOR_TRANSITION_TIME)
+            blended = self._colors.blend(self._target_colors, t)
+            done = blended.distance(self._target_colors) < 1
+            self._colors = self._target_colors if done else blended
 
     def draw(self, target: pygame.Surface, center: Point, tilt: float = 0.0) -> None:
         image = self._render()
@@ -70,7 +91,7 @@ class BirdSprite:
     def _render(self) -> pygame.Surface:
         k = SUPERSAMPLE
         r = self.radius * k
-        width, height = round(r * 4.2), round(r * 4.2)
+        width, height = round(r * 4.6), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
         line = max(2, round(r * 0.09))
@@ -91,25 +112,25 @@ class BirdSprite:
         pygame.draw.polygon(canvas, OUTLINE, points, line)
 
     def _draw_tail(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
+        # Triángulo que nace dentro del cuerpo y termina en punta, apenas hacia arriba.
         tail = [
-            (cx - 1.05 * r, cy - 0.35 * r),
-            (cx - 1.55 * r, cy - 0.15 * r),
-            (cx - 1.5 * r, cy + 0.3 * r),
-            (cx - 1.0 * r, cy + 0.25 * r),
+            (cx - 0.95 * r, cy - 0.42 * r),
+            (cx - 1.95 * r, cy - 0.22 * r),
+            (cx - 0.95 * r, cy + 0.32 * r),
         ]
-        self._poly(canvas, BODY_SHADE, tail, line)
+        self._poly(canvas, self._colors.body_shade, tail, line)
 
     def _draw_body(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        body = pygame.Rect(0, 0, round(2.6 * r), round(2.0 * r))
+        body = pygame.Rect(0, 0, round(BODY_WIDTH * r), round(BODY_HEIGHT * r))
         body.center = (round(cx), round(cy))
-        pygame.draw.ellipse(canvas, BODY, body)
-        belly = pygame.Rect(0, 0, round(1.7 * r), round(0.95 * r))
-        belly.center = (round(cx + 0.15 * r), round(cy + 0.48 * r))
-        pygame.draw.ellipse(canvas, BELLY, belly)
+        pygame.draw.ellipse(canvas, self._colors.body, body)
+        belly = pygame.Rect(0, 0, round(1.85 * r), round(1.15 * r))
+        belly.center = (round(cx + 0.12 * r), round(cy + 0.5 * r))
+        pygame.draw.ellipse(canvas, self._colors.belly, belly)
         pygame.draw.ellipse(canvas, OUTLINE, body, line)
 
     def _draw_eye(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        eye = (cx + 0.5 * r, cy - 0.38 * r)
+        eye = (cx + 0.5 * r, cy - 0.45 * r)
         pygame.draw.circle(canvas, EYE_WHITE, eye, 0.46 * r)
         pygame.draw.circle(canvas, OUTLINE, eye, 0.46 * r, line)
         # La pupila mira hacia donde va el pájaro.
@@ -119,38 +140,38 @@ class BirdSprite:
 
     def _draw_beak(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
         # Boca más abierta mientras sube con esfuerzo.
-        open_amount = max(0.0, -self.wings.intent) * 0.12 * r
+        gap = max(0.0, -self.wings.intent) * 0.12 * r
         top = [
-            (cx + 0.65 * r, cy - 0.02 * r),
-            (cx + 1.55 * r, cy + 0.12 * r),
-            (cx + 1.5 * r, cy + 0.3 * r),
-            (cx + 0.7 * r, cy + 0.3 * r),
+            (cx + 0.7 * r, cy - 0.02 * r),
+            (cx + 1.85 * r, cy + 0.14 * r),
+            (cx + 1.8 * r, cy + 0.32 * r),
+            (cx + 0.75 * r, cy + 0.32 * r),
         ]
         bottom = [
-            (cx + 0.7 * r, cy + 0.3 * r + open_amount),
-            (cx + 1.4 * r, cy + 0.34 * r + open_amount),
-            (cx + 1.3 * r, cy + 0.55 * r + open_amount),
-            (cx + 0.75 * r, cy + 0.58 * r + open_amount),
+            (cx + 0.75 * r, cy + 0.32 * r + gap),
+            (cx + 1.65 * r, cy + 0.36 * r + gap),
+            (cx + 1.55 * r, cy + 0.58 * r + gap),
+            (cx + 0.8 * r, cy + 0.6 * r + gap),
         ]
         self._poly(canvas, BEAK_BOTTOM, bottom, line)
         self._poly(canvas, BEAK_TOP, top, line)
 
     def _draw_wing(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        shoulder = (cx - 0.12 * r, cy + 0.04 * r)
+        shoulder = (cx - 0.12 * r, cy + 0.08 * r)
         # Ala en reposo: un óvalo que sale del hombro hacia atrás.
-        shape = _ellipse_points(shoulder[0] - 0.55 * r, shoulder[1], 0.62 * r, 0.32 * r)
+        shape = _ellipse_points(shoulder[0] - 0.58 * r, shoulder[1], 0.66 * r, 0.34 * r)
         # Se gira en sentido inverso: ángulo positivo levanta la punta (que está atrás).
         wing = _rotate(shape, shoulder, -self.wings.angle)
-        pygame.draw.polygon(canvas, WING, wing)
+        pygame.draw.polygon(canvas, self._colors.wing, wing)
         # Plumas: líneas cortas en la mitad trasera del ala.
         feathers = _rotate(
             [
-                (shoulder[0] - 0.75 * r, shoulder[1] - 0.12 * r),
-                (shoulder[0] - 0.95 * r, shoulder[1] + 0.02 * r),
-                (shoulder[0] - 0.75 * r, shoulder[1] + 0.16 * r),
+                (shoulder[0] - 0.8 * r, shoulder[1] - 0.13 * r),
+                (shoulder[0] - 1.0 * r, shoulder[1] + 0.02 * r),
+                (shoulder[0] - 0.8 * r, shoulder[1] + 0.17 * r),
             ],
             shoulder,
             -self.wings.angle,
         )
-        pygame.draw.lines(canvas, WING_SHADE, False, feathers, line)
+        pygame.draw.lines(canvas, self._colors.wing_shade, False, feathers, line)
         pygame.draw.polygon(canvas, OUTLINE, wing, line)
