@@ -27,8 +27,10 @@ MENU_BOB_SPEED = 2.1
 #: Pajaritos que muestran el color de cada nivel en el menú.
 MENU_LEVEL_BIRD_RADIUS = 10
 MENU_LEVEL_SPACING = 76
-#: Transparencia del recuadro de instrucciones del menú (más sutil que el resto).
-SUBTLE_PANEL_ALPHA = 45
+#: Medidas de las "píldoras" (récord, cámara, instrucciones, teclas).
+PILL_HEIGHT = 32
+SHADOW_ALPHA = 120
+PILL_PADDING = 12
 
 RIM_OVERHANG = 6
 RIM_HEIGHT = 26
@@ -188,20 +190,22 @@ class Renderer:
 
         self._status_badges(control_name, best)
 
-        # Instrucciones: discretas, sin recuadro marcado, para no competir con el título.
-        card = pygame.Rect(0, 0, 600, 104)
-        card.midbottom = (cx, self._height - 12)
-        self._panel(card, radius=14, alpha=SUBTLE_PANEL_ALPHA, border=False)
-        pulse = int(170 + math.sin(self._menu_time * 2.5) * 85)
-        self._blit_text(
-            "Presiona cualquier tecla", 3, theme.WHITE, alpha=pulse, center=(cx, card.y + 24)
+        # Instrucciones con el mismo formato de "píldora" que la cámara y el récord.
+        blink_on = int(self._menu_time * 2) % 2 == 0  # punto que titila, estilo arcade
+        self._dot_pill(
+            theme.TITLE if blink_on else theme.MUTED,
+            render_text(3, "Presiona cualquier tecla", theme.WHITE),
+            center=(cx, self._height - 112),
+            height=42,
         )
-        self._blit_text(
-            "Mueve la nariz para guiar al pajaro", 2, theme.MUTED, center=(cx, card.y + 54)
+        self._dot_pill(
+            theme.GREEN,
+            render_text(2, "Mueve la nariz para guiar al pajaro", theme.WHITE),
+            center=(cx, self._height - 68),
         )
         self._key_hints(
             ((("P",), "Pausa"), (("F11",), "Pantalla completa"), (("ESC",), "Salir")),
-            center=(cx, card.y + 82),
+            center=(cx, self._height - 28),
         )
 
     def _status_badges(self, control_name: str, best: int) -> None:
@@ -210,48 +214,69 @@ class Renderer:
 
     def _badges(self, items: tuple[tuple[theme.Color, str], ...]) -> None:
         """Columna de "píldoras" arriba a la izquierda: un punto de color y un texto."""
-        x, y = 20, 20
+        y = 20
         for dot, label in items:
             text = render_text(2, label, theme.WHITE)
-            badge = pygame.Rect(x, y, text.get_width() + 46, 32)
-            self._panel(badge, radius=16)
-            pygame.draw.circle(self._screen, dot, (badge.x + 18, badge.centery), 6)
-            self._screen.blit(text, text.get_rect(midleft=(badge.x + 32, badge.centery)))
-            y = badge.bottom + 8
+            pill = self._dot_pill(dot, text, topleft=(20, y))
+            y = pill.bottom + 8
+
+    def _dot_pill(
+        self,
+        dot: theme.Color,
+        text: pygame.Surface,
+        height: int = PILL_HEIGHT,
+        **position: tuple[int, int],
+    ) -> pygame.Rect:
+        """Píldora: fondo oscuro redondeado con borde, un punto de color y un texto."""
+        dot_radius = height // 5
+        pill = pygame.Rect(0, 0, text.get_width() + 2 * PILL_PADDING + 2 * dot_radius + 10, height)
+        for name, value in position.items():
+            setattr(pill, name, value)
+        self._panel(pill, radius=height // 2)
+        dot_x = pill.x + PILL_PADDING + dot_radius
+        pygame.draw.circle(self._screen, dot, (dot_x, pill.centery), dot_radius)
+        self._screen.blit(text, text.get_rect(midleft=(dot_x + dot_radius + 10, pill.centery)))
+        return pill
 
     def _key_hints(
         self, hints: tuple[tuple[tuple[str, ...], str], ...], center: tuple[int, int]
     ) -> None:
-        """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción.
+        """Fila de píldoras centradas, cada una con sus teclas dibujadas y la acción.
 
         Cada ayuda es ``(teclas, acción)``; varias teclas para la misma acción se
-        dibujan una al lado de la otra.
+        dibujan una al lado de la otra dentro de la misma píldora.
         """
-        cap_gap, inner, after_keys, gap = 6, 6, 8, 26
+        cap_gap, inner, after_keys, gap = 6, 6, 8, 10
         groups = [
             (
                 [render_text(2, key, theme.OUTLINE) for key in keys],
-                render_text(2, label, theme.MUTED),
+                render_text(2, label, theme.WHITE),
             )
             for keys, label in hints
         ]
 
-        def group_width(keys: list[pygame.Surface], label: pygame.Surface) -> int:
+        def pill_width(keys: list[pygame.Surface], label: pygame.Surface) -> int:
             caps = sum(k.get_width() + 2 * inner for k in keys) + cap_gap * (len(keys) - 1)
-            return int(caps + after_keys + label.get_width())
+            return int(caps + after_keys + label.get_width() + 2 * PILL_PADDING)
 
-        total = sum(group_width(k, lbl) for k, lbl in groups) + gap * (len(groups) - 1)
-        x = center[0] - total // 2
-        for keys, label in groups:
+        widths = [pill_width(k, lbl) for k, lbl in groups]
+        x = center[0] - (sum(widths) + gap * (len(groups) - 1)) // 2
+        for (keys, label), width in zip(groups, widths, strict=True):
+            pill = pygame.Rect(x, 0, width, PILL_HEIGHT)
+            pill.centery = center[1]
+            self._panel(pill, radius=PILL_HEIGHT // 2)
+            cursor = pill.x + PILL_PADDING
             for key_text in keys:
-                cap = pygame.Rect(x, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8)
-                cap.centery = center[1]
+                cap = pygame.Rect(
+                    cursor, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8
+                )
+                cap.centery = pill.centery
                 pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
                 self._screen.blit(key_text, key_text.get_rect(center=cap.center))
-                x = cap.right + cap_gap
-            x += after_keys - cap_gap
-            self._screen.blit(label, label.get_rect(midleft=(x, center[1])))
-            x += label.get_width() + gap
+                cursor = cap.right + cap_gap
+            cursor += after_keys - cap_gap
+            self._screen.blit(label, label.get_rect(midleft=(cursor, pill.centery)))
+            x = pill.right + gap
 
     def _draw_game_over(self, score: int, best: int, new_record: bool) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
@@ -319,12 +344,13 @@ class Renderer:
         self,
         rect: pygame.Rect,
         radius: int = 10,
-        alpha: int = theme.PANEL_ALPHA,
         border: bool = True,
     ) -> None:
         """Rectángulo semitransparente. Dibujar con alfa exige una superficie ``SRCALPHA``."""
         surface = pygame.Surface(rect.size, pygame.SRCALPHA)
-        pygame.draw.rect(surface, (0, 0, 0, alpha), surface.get_rect(), border_radius=radius)
+        pygame.draw.rect(
+            surface, (0, 0, 0, theme.PANEL_ALPHA), surface.get_rect(), border_radius=radius
+        )
         if border:
             pygame.draw.rect(
                 surface, (*theme.WHITE, 220), surface.get_rect(), 2, border_radius=radius
@@ -341,18 +367,11 @@ class Renderer:
         )
         self._screen.blit(surface, surface.get_rect(center=center))
 
-    def _blit_text(
-        self, text: str, scale: int, color: theme.Color, *, alpha: int = 255, **position: object
-    ) -> None:
+    def _blit_text(self, text: str, scale: int, color: theme.Color, **position: object) -> None:
         """Texto con sombra de un "píxel": se lee bien sobre el escenario animado."""
         rendered = render_text(scale, text, color)
-        shadow = render_text(scale, text, theme.BLACK)
-        if alpha < 255:  # las superficies están cacheadas: se copian antes de modificarlas
-            rendered, shadow = rendered.copy(), shadow.copy()
-            rendered.set_alpha(alpha)
-        else:
-            shadow = shadow.copy()
-        shadow.set_alpha(alpha * 120 // 255)
+        shadow = render_text(scale, text, theme.BLACK).copy()  # cacheada: se copia antes
+        shadow.set_alpha(SHADOW_ALPHA)
         rect = rendered.get_rect(**position)
         self._screen.blit(shadow, rect.move(scale, scale))
         self._screen.blit(rendered, rect)
