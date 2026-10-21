@@ -5,8 +5,8 @@ Se dibuja en una superficie pequeña al doble de resolución y se reduce con
 primitivas de pygame no tengan antialiasing en figuras rellenas.
 
 Para un toque retro suave, ese dibujo se hace a la mitad del tamaño final y se
-agranda con vecino más cercano: cada píxel ocupa un bloque de 2x2 en pantalla
-(``PIXEL_SIZE``), sin perder el suavizado de los bordes.
+agranda con vecino más cercano: cada píxel ocupa un bloque de 2x2 o 3x3 en
+pantalla según el tamaño del pájaro, sin perder el suavizado de los bordes.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -25,7 +25,9 @@ Point = tuple[float, float]
 
 SUPERSAMPLE = 2
 #: Lado (px de pantalla) de cada píxel del dibujo: 2 = pixelado leve, 1 = sin pixelar.
-PIXEL_SIZE = 2
+#: Un "píxel" del dibujo cada tantos px de radio (mínimo 2): el pájaro grande del
+#: menú se pixela un poco más que el del juego, así ambos se ven igual de retro.
+RADIUS_PER_PIXEL = 16
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -37,8 +39,8 @@ BEAK_TOP = (255, 120, 40)
 BEAK_BOTTOM = (225, 80, 35)
 
 # Proporciones del cuerpo, en múltiplos del radio de la hitbox.
-BODY_WIDTH = 2.55
-BODY_HEIGHT = 2.25  # más alto que la hitbox: un pájaro gordito, colisión algo indulgente
+BODY_WIDTH = 3.1
+BODY_HEIGHT = 2.1  # cuerpo alargado; apenas más alto que la hitbox
 
 
 def _ellipse_points(cx: float, cy: float, rx: float, ry: float, n: int = 20) -> list[Point]:
@@ -64,6 +66,7 @@ class BirdSprite:
 
     def __init__(self, radius: float) -> None:
         self.radius = radius
+        self._pixel_size = max(2, round(radius / RADIUS_PER_PIXEL))
         self.wings = WingAnimator()
         self._velocity_y = 0.0
         self._transition = PaletteTransition(bird_palette_for_level(0), COLOR_TRANSITION_TIME)
@@ -85,8 +88,8 @@ class BirdSprite:
         image = self._render()
         if abs(tilt) > 0.5:
             image = pygame.transform.rotozoom(image, tilt, 1.0)
-        if PIXEL_SIZE > 1:
-            p = PIXEL_SIZE
+        p = self._pixel_size
+        if p > 1:
             image = pygame.transform.scale(image, (image.get_width() * p, image.get_height() * p))
         target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
@@ -94,15 +97,16 @@ class BirdSprite:
 
     def _render(self) -> pygame.Surface:
         k = SUPERSAMPLE
-        r = self.radius * k / PIXEL_SIZE
-        width, height = round(r * 4.4), round(r * 4.2)
+        r = self.radius * k / self._pixel_size
+        width, height = round(r * 4.9), round(r * 4.0)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
         line = max(3, round(r * 0.12))
 
         self._draw_body(canvas, cx, cy, r, line)
         self._draw_eye(canvas, cx, cy, r, line)
-        self._draw_beak(canvas, cx, cy, r, line)
+        # Contorno algo más fino en el pico: es una pieza chica y si no queda "tapada".
+        self._draw_beak(canvas, cx, cy, r, max(2, line * 2 // 3))
         self._draw_wing(canvas, cx, cy, r, line)
 
         return pygame.transform.smoothscale(canvas, (width // k, height // k))
@@ -118,13 +122,13 @@ class BirdSprite:
         body = pygame.Rect(0, 0, round(BODY_WIDTH * r), round(BODY_HEIGHT * r))
         body.center = (round(cx), round(cy))
         pygame.draw.ellipse(canvas, self.colors.body, body)
-        belly = pygame.Rect(0, 0, round(1.85 * r), round(1.15 * r))
-        belly.center = (round(cx + 0.12 * r), round(cy + 0.5 * r))
+        belly = pygame.Rect(0, 0, round(2.3 * r), round(1.0 * r))
+        belly.center = (round(cx + 0.15 * r), round(cy + 0.45 * r))
         pygame.draw.ellipse(canvas, self.colors.belly, belly)
         pygame.draw.ellipse(canvas, OUTLINE, body, line)
 
     def _draw_eye(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        eye = (cx + 0.5 * r, cy - 0.45 * r)
+        eye = (cx + 0.78 * r, cy - 0.38 * r)
         pygame.draw.circle(canvas, EYE_WHITE, eye, 0.46 * r)
         pygame.draw.circle(canvas, OUTLINE, eye, 0.46 * r, line)
         # La pupila mira hacia donde va el pájaro.
@@ -136,33 +140,33 @@ class BirdSprite:
         # Boca más abierta mientras sube con esfuerzo.
         gap = max(0.0, -self.wings.intent) * 0.12 * r
         top = [
-            (cx + 0.7 * r, cy - 0.02 * r),
-            (cx + 1.85 * r, cy + 0.14 * r),
-            (cx + 1.8 * r, cy + 0.32 * r),
-            (cx + 0.75 * r, cy + 0.32 * r),
+            (cx + 1.0 * r, cy - 0.08 * r),
+            (cx + 2.2 * r, cy + 0.1 * r),
+            (cx + 2.15 * r, cy + 0.34 * r),
+            (cx + 1.05 * r, cy + 0.34 * r),
         ]
         bottom = [
-            (cx + 0.75 * r, cy + 0.32 * r + gap),
-            (cx + 1.65 * r, cy + 0.36 * r + gap),
-            (cx + 1.55 * r, cy + 0.58 * r + gap),
-            (cx + 0.8 * r, cy + 0.6 * r + gap),
+            (cx + 1.05 * r, cy + 0.34 * r + gap),
+            (cx + 2.0 * r, cy + 0.38 * r + gap),
+            (cx + 1.9 * r, cy + 0.64 * r + gap),
+            (cx + 1.1 * r, cy + 0.66 * r + gap),
         ]
         self._poly(canvas, BEAK_BOTTOM, bottom, line)
         self._poly(canvas, BEAK_TOP, top, line)
 
     def _draw_wing(self, canvas: pygame.Surface, cx: float, cy: float, r: float, line: int) -> None:
-        shoulder = (cx - 0.12 * r, cy + 0.08 * r)
+        shoulder = (cx - 0.2 * r, cy + 0.08 * r)
         # Ala en reposo: un óvalo que sale del hombro hacia atrás.
-        shape = _ellipse_points(shoulder[0] - 0.58 * r, shoulder[1], 0.66 * r, 0.34 * r)
+        shape = _ellipse_points(shoulder[0] - 0.7 * r, shoulder[1], 0.8 * r, 0.34 * r)
         # Se gira en sentido inverso: ángulo positivo levanta la punta (que está atrás).
         wing = _rotate(shape, shoulder, -self.wings.angle)
         pygame.draw.polygon(canvas, self.colors.wing, wing)
         # Plumas: líneas cortas en la mitad trasera del ala.
         feathers = _rotate(
             [
-                (shoulder[0] - 0.8 * r, shoulder[1] - 0.13 * r),
-                (shoulder[0] - 1.0 * r, shoulder[1] + 0.02 * r),
-                (shoulder[0] - 0.8 * r, shoulder[1] + 0.17 * r),
+                (shoulder[0] - 1.0 * r, shoulder[1] - 0.13 * r),
+                (shoulder[0] - 1.22 * r, shoulder[1] + 0.02 * r),
+                (shoulder[0] - 1.0 * r, shoulder[1] + 0.17 * r),
             ],
             shoulder,
             -self.wings.angle,
