@@ -198,26 +198,8 @@ class Renderer:
 
         self._status_badges(control_name, best)
 
-        # Abajo a la izquierda, como cámara y récord arriba: los textos de instrucciones.
-        margin = PILL_MARGIN
-        hint = self._dot_pill(
-            theme.GREEN,
-            render_text(2, "Mueve la nariz para guiar al pajaro", theme.WHITE),
-            bottomleft=(margin, self._height - margin),
-        )
-        blink_on = int(self._menu_time * 2) % 2 == 0  # punto que titila, estilo arcade
-        self._dot_pill(
-            theme.TITLE if blink_on else theme.MUTED,
-            render_text(3, "Presiona cualquier tecla", theme.WHITE),
-            height=42,
-            bottomleft=(margin, hint.y - PILL_GAP),
-        )
-
-        # Abajo a la derecha: una píldora por tecla, apiladas.
-        bottom = self._height - margin
-        for keys, label in reversed(MENU_KEYS):
-            pill = self._key_pill(keys, label, bottomright=(self._width - margin, bottom))
-            bottom = pill.y - PILL_GAP
+        # Abajo y centradas: sólo las teclas.
+        self._key_hints(MENU_KEYS, center=(cx, self._height - PILL_MARGIN - PILL_HEIGHT // 2))
 
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
@@ -232,18 +214,16 @@ class Renderer:
             y = pill.bottom + PILL_GAP
 
     def _dot_pill(
-        self,
-        dot: theme.Color,
-        text: pygame.Surface,
-        height: int = PILL_HEIGHT,
-        **position: tuple[int, int],
+        self, dot: theme.Color, text: pygame.Surface, **position: tuple[int, int]
     ) -> pygame.Rect:
         """Píldora: fondo oscuro redondeado con borde, un punto de color y un texto."""
-        dot_radius = height // 5
-        pill = pygame.Rect(0, 0, text.get_width() + 2 * PILL_PADDING + 2 * dot_radius + 10, height)
+        dot_radius = PILL_HEIGHT // 5
+        pill = pygame.Rect(
+            0, 0, text.get_width() + 2 * PILL_PADDING + 2 * dot_radius + 10, PILL_HEIGHT
+        )
         for name, value in position.items():
             setattr(pill, name, value)
-        self._panel(pill, radius=height // 2)
+        self._panel(pill, radius=PILL_HEIGHT // 2)
         dot_x = pill.x + PILL_PADDING + dot_radius
         pygame.draw.circle(self._screen, dot, (dot_x, pill.centery), dot_radius)
         self._screen.blit(text, text.get_rect(midleft=(dot_x + dot_radius + 10, pill.centery)))
