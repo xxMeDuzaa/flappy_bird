@@ -43,7 +43,7 @@ class FaceControl:
 
     @property
     def name(self) -> str:
-        return f"Cámara ({self._tracker.name})"
+        return f"Camara ({self._tracker.name})"
 
     # ------------------------------------------------------------ ciclo de vida
 

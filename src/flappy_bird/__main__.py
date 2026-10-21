@@ -103,7 +103,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         pygame.display.set_caption(config.screen.title)
         renderer = Renderer(screen, config)
 
-        renderer.draw_loading("Iniciando cámara...")
+        renderer.draw_loading("Iniciando camara...")
         pygame.display.flip()
         pygame.event.pump()
 

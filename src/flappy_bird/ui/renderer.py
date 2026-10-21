@@ -11,7 +11,7 @@ from flappy_bird.config import GameConfig
 from flappy_bird.domain import Bird, Pipe, World
 
 from . import theme
-from .assets import font
+from .assets import render_text
 from .background import SceneBackground
 from .bird_sprite import BirdSprite
 
@@ -100,7 +100,7 @@ class Renderer:
             elif session.waiting_for_player:
                 self._draw_message_overlay(
                     "No se detecta tu rostro",
-                    "Ubícate frente a la cámara con buena luz para seguir jugando",
+                    "Ubicate frente a la camara con buena luz para seguir jugando",
                 )
             elif session.state is GameState.GAME_OVER:
                 self._draw_game_over(session.world.score, session.best_score, session.new_record)
@@ -142,8 +142,8 @@ class Renderer:
     def _draw_hud(self, score: int, best: int, world: World) -> None:
         panel = pygame.Rect(20, 20, 190, 92)
         self._panel(panel)
-        self._screen.blit(font(48).render(f"Score: {score}", True, theme.WHITE), (32, 30))
-        self._screen.blit(font(30).render(f"Récord: {best}", True, theme.YELLOW), (32, 70))
+        self._screen.blit(render_text(48, f"Score: {score}", theme.WHITE), (32, 30))
+        self._screen.blit(render_text(30, f"Record: {best}", theme.YELLOW), (32, 70))
 
         level = self._config.difficulty.index(world.difficulty) + 1
         self._blit_text(f"Nivel {level}", 26, theme.WHITE, topleft=(panel.x, panel.bottom + 8))
@@ -179,7 +179,7 @@ class Renderer:
             "PRESIONA CUALQUIER TECLA", 40, theme.WHITE, alpha=pulse, center=(cx, card.y + 32)
         )
         self._blit_text(
-            "Mueve la nariz hacia arriba y abajo para guiar al pájaro",
+            "Mueve la nariz hacia arriba y abajo para guiar al pajaro",
             26,
             theme.MUTED,
             center=(cx, card.y + 70),
@@ -192,8 +192,8 @@ class Renderer:
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
         x, y = 20, 20
-        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Récord: {best}")):
-            text = font(26).render(label, True, theme.WHITE)
+        for dot, label in ((theme.GREEN, control_name), (theme.TITLE, f"Record: {best}")):
+            text = render_text(26, label, theme.WHITE)
             badge = pygame.Rect(x, y, text.get_width() + 44, 34)
             self._panel(badge, radius=17)
             pygame.draw.circle(self._screen, dot, (badge.x + 18, badge.centery), 6)
@@ -202,11 +202,10 @@ class Renderer:
 
     def _key_hints(self, hints: tuple[tuple[str, str], ...], center: tuple[int, int]) -> None:
         """Teclas dibujadas como "teclas" (recuadro claro) seguidas de su acción."""
-        key_font, label_font = font(24), font(24)
         parts = []
         for key, label in hints:
-            key_text = key_font.render(key, True, theme.OUTLINE)
-            label_text = label_font.render(label, True, theme.WHITE)
+            key_text = render_text(24, key, theme.OUTLINE)
+            label_text = render_text(24, label, theme.WHITE)
             parts.append((key_text, label_text))
         gap, inner = 28, 8
         total = sum(k.get_width() + 2 * inner + 8 + lbl.get_width() for k, lbl in parts)
@@ -226,11 +225,11 @@ class Renderer:
         mid = self._height // 2
         self._text_centered("GAME OVER", 84, theme.RED, mid - 110)
         if new_record:
-            self._text_centered("¡NUEVO RÉCORD!", 42, theme.YELLOW, mid - 50)
+            self._text_centered("NUEVO RECORD!", 42, theme.YELLOW, mid - 50)
         self._text_centered(f"Puntaje: {score}", 40, theme.WHITE, mid + 5)
-        self._text_centered(f"Récord: {best}", 40, theme.YELLOW, mid + 45)
+        self._text_centered(f"Record: {best}", 40, theme.YELLOW, mid + 45)
         self._text_centered(
-            "R o ESPACIO para reiniciar   ·   ESC para salir", 30, theme.WHITE, mid + 115
+            "R o ESPACIO para reiniciar   |   ESC para salir", 30, theme.WHITE, mid + 115
         )
 
     def _draw_message_overlay(self, title: str, subtitle: str) -> None:
@@ -283,20 +282,20 @@ class Renderer:
         thickness: int,
     ) -> None:
         """Texto con contorno grueso, en el mismo estilo de dibujo que el pájaro."""
-        outline = font(size).render(text, True, theme.OUTLINE)
+        outline = render_text(size, text, theme.OUTLINE)
         rect = outline.get_rect(center=center)
         for dx in range(-thickness, thickness + 1):
             for dy in range(-thickness, thickness + 1):
                 if dx * dx + dy * dy <= thickness * thickness:
                     self._screen.blit(outline, rect.move(dx, dy + 1))
-        self._screen.blit(font(size).render(text, True, color), rect)
+        self._screen.blit(render_text(size, text, color), rect)
 
     def _blit_text(
         self, text: str, size: int, color: theme.Color, *, alpha: int = 255, **position: object
     ) -> None:
         """Texto con sombra suave: se lee bien sobre cualquier zona del escenario animado."""
-        rendered = font(size).render(text, True, color)
-        shadow = font(size).render(text, True, theme.BLACK)
+        rendered = render_text(size, text, color)
+        shadow = render_text(size, text, theme.BLACK)
         rect = rendered.get_rect(**position)
         shadow.set_alpha(alpha * 110 // 255)
         rendered.set_alpha(alpha)
