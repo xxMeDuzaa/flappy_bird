@@ -1,9 +1,8 @@
-"""El pájaro, dibujado por código con estilo pixel art (sin imágenes).
+"""El pájaro dibujado con formas vectoriales (sin imágenes).
 
-Las formas (cuerpo, ala, pico...) se dibujan en una grilla chica, sin suavizado
-y con contorno de 2 píxeles, y después se agrandan con vecino más cercano: cada
-"píxel" del sprite se ve como un bloque cuadrado, como en las consolas clásicas.
-La animación del ala y los colores por nivel siguen funcionando igual.
+Se dibuja en una superficie pequeña al doble de resolución y se reduce con
+``smoothscale`` (*supersampling*): así los bordes quedan suavizados aunque las
+primitivas de pygame no tengan antialiasing en figuras rellenas.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -20,12 +19,7 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
-#: Grosor del contorno de la silueta (cuerpo y ala), en píxeles del sprite.
-OUTLINE_PIXELS = 2
-#: Grosor del contorno de los detalles (ojo, pico, plumas).
-DETAIL_OUTLINE_PIXELS = 1
-#: Inclinación en pasos fijos: los sprites retro rotaban de a "cuadros", no en continuo.
-TILT_STEP_DEGREES = 7.5
+SUPERSAMPLE = 2
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -62,10 +56,8 @@ def _rotate(points: list[Point], pivot: Point, degrees: float) -> list[Point]:
 class BirdSprite:
     """Pájaro animado. ``radius`` es el radio de la hitbox."""
 
-    def __init__(self, radius: float, level: int = 0, pixel_size: int = 2) -> None:
-        """``pixel_size``: cuántos píxeles de pantalla mide cada píxel del sprite."""
+    def __init__(self, radius: float, level: int = 0) -> None:
         self.radius = radius
-        self.pixel_size = max(1, pixel_size)
         self.wings = WingAnimator()
         self._velocity_y = 0.0
         self._transition = PaletteTransition(bird_palette_for_level(level), COLOR_TRANSITION_TIME)
@@ -84,32 +76,27 @@ class BirdSprite:
         self._transition.update(dt)
 
     def draw(self, target: pygame.Surface, center: Point, tilt: float = 0.0) -> None:
-        sprite = self._render()
-        step = round(tilt / TILT_STEP_DEGREES) * TILT_STEP_DEGREES
-        if step:
-            # Se rota la grilla chica (sin suavizado) para que los bordes sigan pixelados.
-            sprite = pygame.transform.rotate(sprite, step)
-        size = (sprite.get_width() * self.pixel_size, sprite.get_height() * self.pixel_size)
-        image = pygame.transform.scale(sprite, size)
+        image = self._render()
+        if abs(tilt) > 0.5:
+            image = pygame.transform.rotozoom(image, tilt, 1.0)
         target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
     # ------------------------------------------------------------------ dibujo
 
     def _render(self) -> pygame.Surface:
-        r = self.radius / self.pixel_size  # radio en "píxeles" del sprite
+        k = SUPERSAMPLE
+        r = self.radius * k
         width, height = round(r * 4.4), round(r * 4.2)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
-        line = OUTLINE_PIXELS
+        line = max(2, round(r * 0.09))
 
         self._draw_body(canvas, cx, cy, r, line)
-        # Los detalles chicos (ojo y pico) llevan contorno fino para no quedar "tapados".
-        detail = DETAIL_OUTLINE_PIXELS
-        self._draw_eye(canvas, cx, cy, r, detail)
-        self._draw_beak(canvas, cx, cy, r, detail)
+        self._draw_eye(canvas, cx, cy, r, line)
+        self._draw_beak(canvas, cx, cy, r, line)
         self._draw_wing(canvas, cx, cy, r, line)
 
-        return canvas
+        return pygame.transform.smoothscale(canvas, (width // k, height // k))
 
     @staticmethod
     def _poly(
@@ -171,5 +158,5 @@ class BirdSprite:
             shoulder,
             -self.wings.angle,
         )
-        pygame.draw.lines(canvas, self.colors.wing_shade, False, feathers, DETAIL_OUTLINE_PIXELS)
+        pygame.draw.lines(canvas, self.colors.wing_shade, False, feathers, line)
         pygame.draw.polygon(canvas, OUTLINE, wing, line)

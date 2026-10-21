@@ -24,8 +24,6 @@ MENU_SCROLL_SPEED = 90.0
 MENU_BIRD_SCALE = 2.2
 MENU_BOB_AMPLITUDE = 10.0
 MENU_BOB_SPEED = 2.1
-#: Tamaño de cada píxel del pájaro grande del menú (el del juego usa 2).
-MENU_BIRD_PIXEL = 3
 #: Pajaritos que muestran el color de cada nivel en el menú.
 MENU_LEVEL_BIRD_RADIUS = 10
 MENU_LEVEL_SPACING = 76
@@ -47,13 +45,10 @@ class Renderer:
         self._background = SceneBackground((self._width, self._height))
 
         self._bird_sprite = BirdSprite(config.bird.radius)
-        self._menu_bird = BirdSprite(
-            config.bird.radius * MENU_BIRD_SCALE, pixel_size=MENU_BIRD_PIXEL
-        )
+        self._menu_bird = BirdSprite(config.bird.radius * MENU_BIRD_SCALE)
         self._menu_time = 0.0
         self._level_birds = [
-            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i, pixel_size=1)
-            for i in range(len(config.difficulty))
+            BirdSprite(MENU_LEVEL_BIRD_RADIUS, level=i) for i in range(len(config.difficulty))
         ]
 
         self._dim_overlay = pygame.Surface((self._width, self._height), pygame.SRCALPHA)
