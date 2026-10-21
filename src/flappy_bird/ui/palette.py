@@ -206,7 +206,6 @@ class BirdPalette:
     body: Color
     belly: Color
     wing: Color
-    wing_shade: Color  # plumas del ala
 
     def blend(self, other: BirdPalette, t: float) -> BirdPalette:
         return BirdPalette(**_blend_fields(self, other, t))  # type: ignore[arg-type]
@@ -219,31 +218,26 @@ LEVEL_BIRD_PALETTES: tuple[BirdPalette, ...] = (
         body=(255, 234, 92),
         belly=(255, 247, 190),
         wing=(255, 255, 255),
-        wing_shade=(215, 215, 215),
     ),
     BirdPalette(
         body=(250, 192, 40),
         belly=(250, 208, 92),
         wing=(242, 210, 148),
-        wing_shade=(200, 160, 96),
     ),
     BirdPalette(
         body=(244, 146, 40),
         belly=(252, 196, 125),
         wing=(242, 188, 112),
-        wing_shade=(204, 146, 80),
     ),
     BirdPalette(
         body=(222, 68, 40),
         belly=(236, 118, 84),
         wing=(226, 124, 44),
-        wing_shade=(176, 86, 30),
     ),
     BirdPalette(
         body=(176, 28, 34),
         belly=(204, 70, 64),
         wing=(204, 96, 30),
-        wing_shade=(150, 64, 20),
     ),
 )
 
