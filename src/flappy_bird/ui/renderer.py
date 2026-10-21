@@ -29,6 +29,14 @@ MENU_LEVEL_BIRD_RADIUS = 10
 MENU_LEVEL_SPACING = 76
 #: Medidas de las "píldoras" (récord, cámara, instrucciones, teclas).
 PILL_HEIGHT = 32
+PILL_MARGIN = 20  # distancia de las píldoras a los bordes de la pantalla
+PILL_GAP = 8
+KEY_CAP_PADDING = 6
+KEY_CAP_GAP = 6
+
+#: Teclas que se muestran en el menú, como (teclas, acción).
+KeyHints = tuple[tuple[tuple[str, ...], str], ...]
+MENU_KEYS: KeyHints = ((("P",), "Pausa"), (("F11",), "Pantalla completa"), (("ESC",), "Salir"))
 SHADOW_ALPHA = 120
 PILL_PADDING = 12
 
@@ -190,23 +198,26 @@ class Renderer:
 
         self._status_badges(control_name, best)
 
-        # Instrucciones con el mismo formato de "píldora" que la cámara y el récord.
+        # Abajo a la izquierda, como cámara y récord arriba: los textos de instrucciones.
+        margin = PILL_MARGIN
+        hint = self._dot_pill(
+            theme.GREEN,
+            render_text(2, "Mueve la nariz para guiar al pajaro", theme.WHITE),
+            bottomleft=(margin, self._height - margin),
+        )
         blink_on = int(self._menu_time * 2) % 2 == 0  # punto que titila, estilo arcade
         self._dot_pill(
             theme.TITLE if blink_on else theme.MUTED,
             render_text(3, "Presiona cualquier tecla", theme.WHITE),
-            center=(cx, self._height - 112),
             height=42,
+            bottomleft=(margin, hint.y - PILL_GAP),
         )
-        self._dot_pill(
-            theme.GREEN,
-            render_text(2, "Mueve la nariz para guiar al pajaro", theme.WHITE),
-            center=(cx, self._height - 68),
-        )
-        self._key_hints(
-            ((("P",), "Pausa"), (("F11",), "Pantalla completa"), (("ESC",), "Salir")),
-            center=(cx, self._height - 28),
-        )
+
+        # Abajo a la derecha: una píldora por tecla, apiladas.
+        bottom = self._height - margin
+        for keys, label in reversed(MENU_KEYS):
+            pill = self._key_pill(keys, label, bottomright=(self._width - margin, bottom))
+            bottom = pill.y - PILL_GAP
 
     def _status_badges(self, control_name: str, best: int) -> None:
         """Arriba a la izquierda: con qué se controla el pájaro y el récord actual."""
@@ -214,11 +225,11 @@ class Renderer:
 
     def _badges(self, items: tuple[tuple[theme.Color, str], ...]) -> None:
         """Columna de "píldoras" arriba a la izquierda: un punto de color y un texto."""
-        y = 20
+        y = PILL_MARGIN
         for dot, label in items:
             text = render_text(2, label, theme.WHITE)
-            pill = self._dot_pill(dot, text, topleft=(20, y))
-            y = pill.bottom + 8
+            pill = self._dot_pill(dot, text, topleft=(PILL_MARGIN, y))
+            y = pill.bottom + PILL_GAP
 
     def _dot_pill(
         self,
@@ -238,45 +249,41 @@ class Renderer:
         self._screen.blit(text, text.get_rect(midleft=(dot_x + dot_radius + 10, pill.centery)))
         return pill
 
-    def _key_hints(
-        self, hints: tuple[tuple[tuple[str, ...], str], ...], center: tuple[int, int]
-    ) -> None:
-        """Fila de píldoras centradas, cada una con sus teclas dibujadas y la acción.
+    def _key_hints(self, hints: KeyHints, center: tuple[int, int]) -> None:
+        """Fila de píldoras de teclas centrada (pausa y game over)."""
+        widths = [self._key_pill_width(keys, label) for keys, label in hints]
+        x = center[0] - (sum(widths) + PILL_GAP * (len(hints) - 1)) // 2
+        for keys, label in hints:
+            pill = self._key_pill(keys, label, midleft=(x, center[1]))
+            x = pill.right + PILL_GAP
 
-        Cada ayuda es ``(teclas, acción)``; varias teclas para la misma acción se
-        dibujan una al lado de la otra dentro de la misma píldora.
-        """
-        cap_gap, inner, after_keys, gap = 6, 6, 8, 10
-        groups = [
-            (
-                [render_text(2, key, theme.OUTLINE) for key in keys],
-                render_text(2, label, theme.WHITE),
-            )
-            for keys, label in hints
-        ]
+    def _key_pill(
+        self, keys: tuple[str, ...], label: str, **position: tuple[int, int]
+    ) -> pygame.Rect:
+        """Píldora con una o más teclas dibujadas como "teclas" y su acción."""
+        pill = pygame.Rect(0, 0, self._key_pill_width(keys, label), PILL_HEIGHT)
+        for name, value in position.items():
+            setattr(pill, name, value)
+        self._panel(pill, radius=PILL_HEIGHT // 2)
+        cursor = pill.x + PILL_PADDING
+        for key in keys:
+            key_text = render_text(2, key, theme.OUTLINE)
+            cap = pygame.Rect(cursor, 0, key_text.get_width() + 2 * KEY_CAP_PADDING, 22)
+            cap.centery = pill.centery
+            pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
+            self._screen.blit(key_text, key_text.get_rect(center=cap.center))
+            cursor = cap.right + KEY_CAP_GAP
+        text = render_text(2, label, theme.WHITE)
+        self._screen.blit(text, text.get_rect(midleft=(cursor + 2, pill.centery)))
+        return pill
 
-        def pill_width(keys: list[pygame.Surface], label: pygame.Surface) -> int:
-            caps = sum(k.get_width() + 2 * inner for k in keys) + cap_gap * (len(keys) - 1)
-            return int(caps + after_keys + label.get_width() + 2 * PILL_PADDING)
-
-        widths = [pill_width(k, lbl) for k, lbl in groups]
-        x = center[0] - (sum(widths) + gap * (len(groups) - 1)) // 2
-        for (keys, label), width in zip(groups, widths, strict=True):
-            pill = pygame.Rect(x, 0, width, PILL_HEIGHT)
-            pill.centery = center[1]
-            self._panel(pill, radius=PILL_HEIGHT // 2)
-            cursor = pill.x + PILL_PADDING
-            for key_text in keys:
-                cap = pygame.Rect(
-                    cursor, 0, key_text.get_width() + 2 * inner, key_text.get_height() + 8
-                )
-                cap.centery = pill.centery
-                pygame.draw.rect(self._screen, theme.MUTED, cap, border_radius=4)
-                self._screen.blit(key_text, key_text.get_rect(center=cap.center))
-                cursor = cap.right + cap_gap
-            cursor += after_keys - cap_gap
-            self._screen.blit(label, label.get_rect(midleft=(cursor, pill.centery)))
-            x = pill.right + gap
+    @staticmethod
+    def _key_pill_width(keys: tuple[str, ...], label: str) -> int:
+        caps = sum(
+            render_text(2, key, theme.OUTLINE).get_width() + 2 * KEY_CAP_PADDING for key in keys
+        )
+        caps += KEY_CAP_GAP * len(keys)
+        return int(caps + 2 + render_text(2, label, theme.WHITE).get_width() + 2 * PILL_PADDING)
 
     def _draw_game_over(self, score: int, best: int, new_record: bool) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
@@ -294,7 +301,7 @@ class Renderer:
         self,
         title: str,
         subtitle: str | None,
-        hints: tuple[tuple[tuple[str, ...], str], ...],
+        hints: KeyHints,
     ) -> None:
         self._screen.blit(self._dim_overlay, (0, 0))
         cx, mid = self._width // 2, self._height // 2
