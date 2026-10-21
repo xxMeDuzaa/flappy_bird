@@ -1,12 +1,9 @@
-"""El pájaro dibujado con formas vectoriales (sin imágenes).
+"""El pájaro, dibujado por código en estilo pixel art (sin imágenes).
 
-Se dibuja en una superficie pequeña al doble de resolución y se reduce con
-``smoothscale`` (*supersampling*): así los bordes quedan suavizados aunque las
-primitivas de pygame no tengan antialiasing en figuras rellenas.
-
-Para un toque retro suave, ese dibujo se hace a la mitad del tamaño final y se
-agranda con vecino más cercano: cada píxel ocupa un bloque de 2x2 o 3x3 en
-pantalla según el tamaño del pájaro, sin perder el suavizado de los bordes.
+Las formas (cuerpo, ala, ojo, pico) se dibujan en una grilla chica, con bordes
+duros (sin suavizado) y contorno de 1 píxel, y después se agrandan con vecino
+más cercano: cada píxel del sprite se ve como un bloque cuadrado de 3x3 o más
+en pantalla, como en las consolas clásicas.
 
 Los colores del cuerpo y del ala dependen del nivel (ver ``palette.py``) y
 cambian gradualmente cuando sube la dificultad.
@@ -23,11 +20,12 @@ from .palette import BirdPalette, PaletteTransition, bird_palette_for_level
 
 Point = tuple[float, float]
 
-SUPERSAMPLE = 2
-#: Lado (px de pantalla) de cada píxel del dibujo: 2 = pixelado leve, 1 = sin pixelar.
-#: Un "píxel" del dibujo cada tantos px de radio (mínimo 2): el pájaro grande del
-#: menú se pixela un poco más que el del juego, así ambos se ven igual de retro.
-RADIUS_PER_PIXEL = 16
+#: Un "píxel" del sprite cada tantos px de radio (mínimo ``MIN_PIXEL_SIZE``): el
+#: pájaro grande del menú usa bloques más grandes, así ambos se ven igual de retro.
+RADIUS_PER_PIXEL = 10
+MIN_PIXEL_SIZE = 3
+#: La inclinación va de a pasos: los sprites retro giraban "por cuadros".
+TILT_STEP_DEGREES = 7.5
 #: Duración (s) del cambio de color entre niveles.
 COLOR_TRANSITION_TIME = 1.5
 
@@ -66,7 +64,7 @@ class BirdSprite:
 
     def __init__(self, radius: float) -> None:
         self.radius = radius
-        self._pixel_size = max(2, round(radius / RADIUS_PER_PIXEL))
+        self._pixel_size = max(MIN_PIXEL_SIZE, round(radius / RADIUS_PER_PIXEL))
         self.wings = WingAnimator()
         self._velocity_y = 0.0
         self._transition = PaletteTransition(bird_palette_for_level(0), COLOR_TRANSITION_TIME)
@@ -85,31 +83,29 @@ class BirdSprite:
         self._transition.update(dt)
 
     def draw(self, target: pygame.Surface, center: Point, tilt: float = 0.0) -> None:
-        image = self._render()
-        if abs(tilt) > 0.5:
-            image = pygame.transform.rotozoom(image, tilt, 1.0)
+        sprite = self._render()
+        step = round(tilt / TILT_STEP_DEGREES) * TILT_STEP_DEGREES
+        if step:
+            # Se rota la grilla chica, sin suavizado, para que el borde siga pixelado.
+            sprite = pygame.transform.rotate(sprite, step)
         p = self._pixel_size
-        if p > 1:
-            image = pygame.transform.scale(image, (image.get_width() * p, image.get_height() * p))
+        image = pygame.transform.scale(sprite, (sprite.get_width() * p, sprite.get_height() * p))
         target.blit(image, image.get_rect(center=(round(center[0]), round(center[1]))))
 
     # ------------------------------------------------------------------ dibujo
 
     def _render(self) -> pygame.Surface:
-        k = SUPERSAMPLE
-        r = self.radius * k / self._pixel_size
+        r = self.radius / self._pixel_size  # radio en píxeles del sprite
         width, height = round(r * 5.0), round(r * 4.3)
         canvas = pygame.Surface((width, height), pygame.SRCALPHA)
         cx, cy = width / 2, height / 2
-        line = max(3, round(r * 0.12))
+        line = 1  # contorno de un píxel, como en el pixel art
 
         self._draw_body(canvas, cx, cy, r, line)
         self._draw_eye(canvas, cx, cy, r, line)
-        # Contorno algo más fino en el pico: es una pieza chica y si no queda "tapada".
-        self._draw_beak(canvas, cx, cy, r, max(2, line * 2 // 3))
+        self._draw_beak(canvas, cx, cy, r, line)
         self._draw_wing(canvas, cx, cy, r, line)
-
-        return pygame.transform.smoothscale(canvas, (width // k, height // k))
+        return canvas
 
     @staticmethod
     def _poly(
