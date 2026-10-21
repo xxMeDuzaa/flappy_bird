@@ -1,0 +1,8 @@
+# Normaliza los finales de línea en el repo (LF) y deja que cada SO
+# use los suyos en la copia de trabajo.
+* text=auto
+
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.task binary

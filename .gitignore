@@ -1,0 +1,30 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Entornos virtuales
+.venv/
+venv/
+env/
+
+# Herramientas
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Modelos descargados en tiempo de ejecución
+*.task
+
+# Datos locales del jugador (versiones anteriores guardaban el récord acá)
+flappy_highscore.txt
+
+# Editores / SO
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

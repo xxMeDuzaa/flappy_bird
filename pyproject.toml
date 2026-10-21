@@ -1,0 +1,85 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "flappy-bird-eurekas"
+version = "2.0.0"
+description = "Flappy Bird controlado con la nariz mediante visión por computadora (MediaPipe + OpenCV + pygame-ce)."
+readme = "README.md"
+requires-python = ">=3.11"
+license = "GPL-3.0-only"
+license-files = ["LICENSE"]
+authors = [{ name = "MeDuza", email = "mariamelinaduarte@gmail.com" }]
+keywords = ["game", "flappy-bird", "computer-vision", "mediapipe", "pygame"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Games/Entertainment :: Arcade",
+]
+dependencies = [
+    "pygame-ce>=2.5",
+    # MediaPipe depende de opencv-contrib-python; usamos el mismo paquete para evitar
+    # tener dos distribuciones distintas que instalan el módulo `cv2`.
+    "opencv-contrib-python>=4.10",
+    "numpy>=1.26",
+    # MediaPipe no publica wheels para macOS Intel: ahí el juego usa el tracker de OpenCV.
+    "mediapipe>=1.0; sys_platform != 'darwin' or platform_machine == 'arm64'",
+]
+
+[project.scripts]
+flappy-bird = "flappy_bird.__main__:main"
+
+[project.urls]
+Repository = "https://github.com/xxMeDuzaa/flappy_bird"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.3",
+    "pytest-cov>=6.0",
+    "ruff>=0.8",
+    "mypy>=1.13",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/flappy_bird"]
+
+# ---------------------------------------------------------------- herramientas
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests", "tools"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # pycodestyle
+    "F",        # pyflakes
+    "I",        # isort
+    "B",        # bugbear
+    "UP",       # pyupgrade
+    "SIM",      # simplificaciones
+    "N",        # nombres PEP 8
+    "RUF",      # reglas propias de ruff
+    "PTH",      # pathlib en vez de os.path
+]
+ignore = ["RUF001", "RUF002", "RUF003"]  # permitir tildes y caracteres en español
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+strict = true
+mypy_path = "src"
+packages = ["flappy_bird"]
+
+[[tool.mypy.overrides]]
+module = ["cv2.*", "cv2", "mediapipe.*", "mediapipe"]
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra --strict-markers"

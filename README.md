@@ -1,215 +1,160 @@
-# 🐦 Flappy Bird - Control Facial
+# 🐦 Flappy Bird – Control Facial
 
-![Versión](https://img.shields.io/badge/versión-1.0.0-blue)
-![Python](https://img.shields.io/badge/Python-3.13-green)
-![Pygame](https://img.shields.io/badge/Pygame-2.6.1-red)
-![OpenCV](https://img.shields.io/badge/OpenCV-4.x-orange)
+![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB)
+![pygame-ce](https://img.shields.io/badge/pygame--ce-2.5%2B-red)
+![MediaPipe](https://img.shields.io/badge/MediaPipe-Face%20Landmarker-0097A7)
+![OpenCV](https://img.shields.io/badge/OpenCV-YuNet-5C3EE8)
+![Licencia](https://img.shields.io/badge/licencia-GPL--3.0-green)
 
-## 📖 Descripción
-
-**Flappy Bird - Control Facial** es una versión del clásico juego Flappy Bird que utiliza **reconocimiento facial** para controlar a Flappy. Mueve tu nariz hacia arriba o abajo para esquivar los tubos y conseguir la puntuación más alta.
-
-El juego cuenta con:
-- 🎮 **Control por movimiento de nariz** (detección facial en tiempo real)
-- 📈 **Dificultad progresiva** (aumenta automáticamente con tu puntaje)
-- 🏆 **Sistema de récords** (guarda tu mejor puntuación)
-- 🎨 **Interfaz clisica 2D** con efectos visuales y animaciones
-- 📷 **Modo debug** para probar el reconocimiento facial
-- ⚡ **Velocidad extrema** en niveles altos
+Versión del clásico Flappy Bird que se controla **moviendo la nariz** frente a la cámara.
+El pájaro sigue la altura de tu nariz en tiempo real; esquiva los tubos para sumar puntos.
 
 ## ✨ Características
 
-- **Control intuitivo**: Solo mueve tu nariz arriba/abajo
-- **Dificultad dinámica y rápida**: 
-  - Velocidad inicial: -10 (rápido)
-  - Velocidad máxima: -14 (extremadamente rápido)
-  - Gap entre tubos: 220 → 180
-  - Distancia entre tubos: 400 → 280
-- **Sistema de puntuación**: 1 punto por tubo superado
-- **Guardado automático**: Tu récord se guarda localmente
-- **Modo debug independiente**: Prueba la cámara sin jugar
-- **Compatibilidad**: Funciona con Python 3.13
+- **Seguimiento facial moderno**: MediaPipe Face Landmarker (malla de 478 puntos) ubica la
+  punta real de la nariz. Si MediaPipe no está disponible, cae automáticamente a la red
+  YuNet de OpenCV (modelo incluido, funciona sin internet).
+- **Control suave y preciso**: filtro *One Euro* contra el temblor + calibración del rango
+  de movimiento, así no hace falta estirar el cuello para llegar a los bordes.
+- **Juego fluido a 60 FPS**: la cámara y la detección corren en un hilo aparte y la física
+  usa tiempo real (`dt`), así la velocidad no depende de los FPS de la webcam.
+- **Hitbox justa**: colisión círculo-rectángulo acorde al dibujo del pájaro.
+- **Pausa automática** si se pierde el rostro o la ventana pierde el foco.
+- **Dificultad progresiva**, récord persistente y vista previa de la cámara en pantalla.
+- **Modo mouse** para jugar o probar sin cámara.
 
 ## 🎮 Controles
 
-| Tecla | Acción |
-|-------|--------|
-| **Movimiento de nariz** | Controla la altura del pájaro |
-| **R** | Reiniciar juego (cuando pierdes) |
-| **ESC** | Salir del juego |
-
-## 🖥️ Requisitos del Sistema
-
-### Hardware
-- Cámara web (integrada o externa)
-- Procesador: 1.5 GHz o superior
-- RAM: 2 GB mínimo
-- Resolución de pantalla recomendada: 1024x600 o superior
-
-### Software
-- **Python 3.13** (o superior)
-- Bibliotecas requeridas:
-  - `pygame` 2.6.1
-  - `opencv-python` 4.x
-  - `numpy` 1.x
+| Entrada | Acción |
+|---|---|
+| Nariz arriba / abajo | Mover el pájaro |
+| Cualquier tecla / clic | Empezar (en el menú) |
+| `P` | Pausar / continuar |
+| `R`, `Espacio` o `Enter` | Reiniciar tras perder |
+| `F11` | Pantalla completa |
+| `Esc` | Salir |
 
 ## 📦 Instalación
 
-### 1. Clonar el repositorio
+Requisitos: **Python 3.11 o superior** y una webcam.
+
+### Opción A — con [uv](https://docs.astral.sh/uv/) (recomendada)
+
 ```bash
-git clone https://github.com/tu-usuario/flappy-bird-facial.git
-cd flappy-bird-facial
+git clone https://github.com/xxMeDuzaa/flappy_bird.git
+cd flappy_bird
+uv sync              # crea .venv e instala todo
+uv run flappy-bird   # ejecuta el juego
 ```
 
-### 2. Instalar dependencias
+### Opción B — con pip
+
 ```bash
-pip install pygame opencv-python numpy
+git clone https://github.com/xxMeDuzaa/flappy_bird.git
+cd flappy_bird
+python -m venv .venv
+.venv\Scripts\activate          # Windows  (Linux/macOS: source .venv/bin/activate)
+pip install -e .
+flappy-bird                     # o: python -m flappy_bird
 ```
 
-### 3. Ejecutar el juego
+> La primera vez que se usa MediaPipe se descarga su modelo (~4 MB) y queda guardado en
+> `%LOCALAPPDATA%\flappy-bird-eurekas\models`. Sin internet, el juego usa YuNet.
+
+### Opciones de línea de comandos
+
+```text
+flappy-bird [--control {face,mouse}] [--tracker {auto,mediapipe,opencv}]
+            [--camera N] [--no-preview] [-v]
+```
+
+Ejemplos: `flappy-bird --control mouse` (sin cámara), `flappy-bird --camera 1` (otra webcam),
+`flappy-bird --tracker opencv` (forzar YuNet).
+
+## 🏗️ Arquitectura
+
+El código sigue una **arquitectura por capas** (estilo *Clean / Hexagonal*): las reglas
+del juego no dependen de pygame ni de OpenCV, y las dependencias apuntan siempre hacia
+adentro.
+
+```mermaid
+flowchart LR
+    UI["ui<br/>pygame-ce: ventana, dibujo, teclado"] --> APP
+    INFRA["infrastructure<br/>cámara, MediaPipe/YuNet, archivo de récord"] -- implementa puertos --> APP
+    APP["application<br/>GameSession, ScoreBoard, puertos"] --> DOM["domain<br/>Bird, Pipe, World, dificultad"]
+    MAIN["__main__<br/>composition root"] --> UI & INFRA & APP
+```
+
+| Capa | Responsabilidad | Depende de |
+|---|---|---|
+| `domain` | Reglas puras: movimiento, tubos, colisiones, puntaje, dificultad | nada externo |
+| `application` | Estados de la partida (menú, jugando, pausa, game over), récord y **puertos** (`Protocol`) | `domain` |
+| `infrastructure` | Implementaciones concretas: cámara en hilo, detectores faciales, persistencia JSON | `application` (puertos) |
+| `ui` | Renderizado y eventos con pygame-ce | `application` |
+| `__main__` | Arma todo e inyecta las dependencias | todas |
+
+Patrones usados: **Strategy** (detectores intercambiables `NoseTracker`, controles
+`ControlSource`), **Repository** (`HighScoreRepository`), **State machine** (`GameSession`),
+**Dependency Injection** (composition root en `__main__.py`).
+
+```text
+flappy_bird/
+├── pyproject.toml              # dependencias y configuración de ruff, mypy y pytest
+├── src/flappy_bird/
+│   ├── __main__.py             # punto de entrada y CLI
+│   ├── config.py               # todas las constantes del juego
+│   ├── domain/                 # bird, pipe, world, geometry, difficulty, events
+│   ├── application/            # session, scoring, ports
+│   ├── infrastructure/
+│   │   ├── camera/             # envoltorio de cv2.VideoCapture
+│   │   ├── tracking/           # MediaPipe, YuNet, filtro One Euro, descarga de modelo
+│   │   ├── storage/            # récord en JSON
+│   │   └── face_control.py     # cámara + detector en un hilo de fondo
+│   ├── ui/                     # app (loop), renderer, assets, theme, mouse_control
+│   └── assets/                 # imágenes y modelo YuNet
+├── tests/                      # tests unitarios (pytest)
+├── tools/camera_debug.py       # diagnóstico de cámara y detector
+└── .github/workflows/ci.yml    # lint + tipos + tests en cada push
+```
+
+## ⚙️ Configuración
+
+Todo lo ajustable está en [`src/flappy_bird/config.py`](src/flappy_bird/config.py):
+niveles de dificultad (hueco, velocidad en px/s, distancia entre tubos), tamaño de la
+hitbox, suavizado del pájaro, rango de calibración de la nariz y parámetros del filtro.
+
+## 🧪 Desarrollo
+
 ```bash
-python main.py
+uv sync                 # incluye el grupo "dev" (pytest, ruff, mypy)
+uv run pytest           # tests
+uv run ruff check .     # linter
+uv run ruff format .    # formateo
+uv run mypy             # chequeo de tipos estricto
 ```
 
-## 🚀 Cómo Jugar
-1. Colócate frente a la cámara a unos 50-80 cm de distancia
-2. Asegúrate de tener buena iluminación
-3. Mueve tu nariz hacia arriba o abajo para controlar la altura del pájaro
-4. Esquiva los tubos verdes para sumar puntos
-5. Cada tubo superado = 1 punto
+Con pip: `pip install -e . --group dev` (requiere pip ≥ 25.1).
 
--La dificultad aumenta automáticamente con tu puntaje
+La CI de GitHub Actions corre lint, tipos y tests en Python 3.11 y 3.13 en cada push y PR.
 
-## 🐛 Modo Debug
-Si quieres probar el reconocimiento facial sin jugar:
-```bash
-python camera_debug.py
-```
+## 🔧 Solución de problemas
 
-Esto abrirá una ventana con:
-- Detección de rostro (rectángulo verde)
-- Seguimiento de nariz (círculo rojo)
-- Indicadores de apertura de boca e inclinación de cabeza
-- Información en tiempo real
+**La cámara no abre**
+- Windows: *Configuración → Privacidad y seguridad → Cámara* → permitir el acceso a las
+  aplicaciones de escritorio. Cierra otras apps que usen la cámara (Zoom, Teams, Meet).
+- Prueba otro índice: `python tools/camera_debug.py --list-cameras` y luego `flappy-bird --camera 1`.
 
-## 🎯 Configuración de Dificultad Actual
-Tu juego tiene una dificultad MUY RÁPIDA:
+**No detecta el rostro / el control tiembla**
+- Buena iluminación de frente, a 50–80 cm de la cámara.
+- `python tools/camera_debug.py` muestra la detección en vivo y la banda de calibración.
+- Si la nariz no llega a cubrir la pantalla, ajusta `range_top` / `range_bottom` en `config.py`.
 
-```python
-DIFFICULTY_CONFIG = {
-    0: {'gap': 220, 'velocity': -10, 'spawn_distance': 400},  # Base muy rápida
-    5: {'gap': 210, 'velocity': -11, 'spawn_distance': 350},  # Aumenta velocidad
-    10: {'gap': 200, 'velocity': -12, 'spawn_distance': 300}, # Experto
-    15: {'gap': 190, 'velocity': -13, 'spawn_distance': 290}, # Profesional
-    20: {'gap': 180, 'velocity': -14, 'spawn_distance': 280}, # Legendario
-}
-```
+**Conflicto de OpenCV al instalar** — si ya tenías `opencv-python` instalado globalmente,
+usa un entorno virtual limpio (las opciones A y B ya lo hacen).
 
-Comparativa de dificultad:
-Nivel	Velocidad	Diferencia
-Fácil (original)	-4	Referencia
-Tu juego base	-10	2.5x más rápido
-Tu juego máximo	-14	3.5x más rápido
+## 📝 Licencia y créditos
 
-## 🔧 Solución de Problemas
-La cámara no se detecta
-```bash
-# Verificar permisos de cámara en Windows:
-# Configuración > Privacidad > Cámara > Permitir aplicaciones
+Este proyecto se distribuye bajo **GPL-3.0** (ver [LICENSE](LICENSE)).
+Modelos de terceros: ver [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
-# Probar diferentes índices de cámara
-python camera_debug.py
-```
-
-- Asegúrate de tener buena iluminación
-- Tu configuración de velocidad es muy alta, considera reducir si es necesario
-- No detecta mi rostro:
-      - Acércate más a la cámara (50-80 cm)
-      - Mejora la iluminación
-      - Mira directamente a la cámara
-
-Prueba el modo debug: python camera_debug.py
-
-El juego es demasiado rápido
-Si la velocidad es muy alta para ti, puedes modificarla en server/game_logic.py:
-
-python
-# Reduce las velocidades
-```bash
-DIFFICULTY_CONFIG = {
-    0: {'gap': 220, 'velocity': -6, 'spawn_distance': 400},   # Más lento
-    5: {'gap': 210, 'velocity': -7, 'spawn_distance': 350},
-    # ... etc
-}
-```
-
-Error de importación
-```bash
-# Reinstalar dependencias
-pip uninstall opencv-python pygame numpy
-pip install opencv-python pygame numpy
-```
-
-## 🎨 Personalización
-Cambiar resolución
-Edita client/renderer.py:
-```
-python
-def __init__(self, width=1024, height=600):  # Cambia estos valores
-Ajustar sensibilidad del control
-Edita main.py:
-```
-python
-sensitivity = 0.85  # 0.1 (suave) a 1.0 (rápido)
-Modificar dificultad (valores actuales)
-Edita server/game_logic.py:
-```
-python
-DIFFICULTY_CONFIG = {
-    0: {'gap': 220, 'velocity': -10, 'spawn_distance': 400},  # Ajusta según prefieras
-    5: {'gap': 210, 'velocity': -11, 'spawn_distance': 350},
-    # Modifica estos valores
-}
-```
-Hacer el juego más lento (recomendado para principiantes)
-```python
-DIFFICULTY_CONFIG = {
-    0: {'gap': 240, 'velocity': -5, 'spawn_distance': 450},
-    5: {'gap': 230, 'velocity': -6, 'spawn_distance': 420},
-    10: {'gap': 220, 'velocity': -7, 'spawn_distance': 390},
-    15: {'gap': 210, 'velocity': -8, 'spawn_distance': 360},
-    20: {'gap': 200, 'velocity': -9, 'spawn_distance': 330},
-}
-```
-
-## 📊 Rendimiento
-- FPS: 60 (estables)
-- Latencia de control: ~50-100ms
-- Uso de CPU: ~15-25%
-- Uso de RAM: ~150-200 MB
-
-⚠️ Nota sobre la dificultad
-Este juego está configurado con velocidades extremadamente rápidas (hasta -14). Si eres principiante o encuentras el juego muy difícil, te recomendamos reducir las velocidades en server/game_logic.py a valores entre -5 y -8.
-
-## 🤝 Contribuciones
-Las contribuciones son bienvenidas. Por favor:
-```
-Fork el proyecto
-Crea tu rama (git checkout -b feature/AmazingFeature)
-Commit tus cambios (git commit -m 'Add AmazingFeature')
-Push a la rama (git push origin feature/AmazingFeature)
-Abre un Pull Request
-```
-
-## 📝 Licencia
-Este proyecto está bajo Licencia. Ver el archivo LICENSE para más detalles.
-
-## 🙏 Agradecimientos
-- Pygame - Framework de juegos
-- OpenCV - Visión por computadora
-- Inspirado en el clásico juego Flappy Bird
-
-## 📧 Contacto
-- Autor: MeDuza
-- Email: mariamelinaduarte@gmail,com
-- GitHub: @xxMeDuzaa
+Autora: **MeDuza** · [@xxMeDuzaa](https://github.com/xxMeDuzaa) · mariamelinaduarte@gmail.com
