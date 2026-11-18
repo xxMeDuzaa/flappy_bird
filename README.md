@@ -160,6 +160,11 @@ La CI de GitHub Actions corre lint, tipos y tests en Python 3.11 y 3.13 en cada 
 **Conflicto de OpenCV al instalar** — si ya tenías `opencv-python` instalado globalmente,
 usa un entorno virtual limpio (las opciones A y B ya lo hacen).
 
+## 🤖 Uso de IA
+
+Desarrollado con asistencia de IA generativa. La definición de requerimientos,
+la revisión del código y las pruebas estuvieron a mi cargo.
+
 ## 📝 Licencia y créditos
 
 Este proyecto se distribuye bajo **GPL-3.0** (ver [LICENSE](LICENSE)).
